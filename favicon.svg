@@ -1,0 +1,13 @@
+
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Solvent Deck">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#6aa9ff"/>
+      <stop offset="1" stop-color="#ffd166"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="448" height="448" rx="44" fill="#121933" stroke="#2a3460" stroke-width="12"/>
+  <text x="50%" y="46%" dominant-baseline="middle" text-anchor="middle" font-size="240" font-family="Segoe UI, Arial, sans-serif" fill="url(#g)">♠</text>
+  <text x="50%" y="74%" dominant-baseline="middle" text-anchor="middle" font-size="120" font-family="Segoe UI, Arial, sans-serif" fill="#ffd166">A</text>
+</svg>
