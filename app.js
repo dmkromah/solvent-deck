@@ -513,15 +513,26 @@
     root.appendChild(list);
   }
 
-  // ---------- Settings ----------
-  const saveSettingsBtn = $('#saveSettingsBtn');
-  if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', ()=>{
-    const cap = $('#capHours');
-    const v = parseInt(cap && cap.value || 8,10);
-    state.settings.weeklyCapacityHours = v;
-    save();
-    alert('Settings saved.');
-  });
+ 
+// ---------- Settings ----------
+const saveSettingsBtn = $('#saveSettingsBtn');
+if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', ()=>{
+  const cap = $('#capHours');
+  const v = parseInt(cap && cap.value || 8,10);
+  state.settings.weeklyCapacityHours = v;
+  save();
+  alert('Settings saved.');
+});
+
+// v0.2: Reset data (clear LocalStorage + reload)
+const resetBtn = $('#resetBtn');
+if (resetBtn) resetBtn.addEventListener('click', ()=>{
+  const ok = confirm('Reset Solvent Deck to factory settings? This will clear your local data (deck/draw/plan).');
+  if(!ok) return;
+  localStorage.removeItem('solventDeckState');
+  location.reload();
+});
+
 
   // ---------- Example Seeder ----------
   function seedExample(){
