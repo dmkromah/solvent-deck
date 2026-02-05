@@ -345,6 +345,13 @@
 
     const weekStart = state.plan.weekStart || fmtLocalDate(startOfWeek(new Date()));
     const tasks = state.plan.tasks || [];
+if (!tasks.length) {
+  // Nothing planned yet—but don’t freeze the UI.
+  // You can choose to show a hint or redirect gently.
+  // Example: show a hint (no redirect):
+  const capEl = $('#capacityBanner');
+  if (capEl) capEl.innerText = 'Capacity: 0h (0%) — Generate a Weekly Plan to begin.';
+}
 
     // Build day buckets for Mon..Sun using local dates
     const perDay = [0,1,2,3,4,5,6].map(i => ({
