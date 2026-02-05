@@ -3,10 +3,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Solvent Deck – 52-Goal Digital Platform (Prototype)</title>
   <link rel="stylesheet" href="styles.css" />
-</="draw">Weekly Draw</button>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="logo">🎴</div>
+      <div class="title">Solvent Deck</div>
+    </div>
+    <nav class="top-nav" id="topNav">
+      <button data-section="welcome">Welcome</button>
+      <button data-section="how">How It Works</button>
+      <button data-section="domains">Domains</button>
+      <button data-section="aces">Aces</button>
+      <button data-section="strategics">K/Q</button>
+      <button data-section="habits">J–2</button>
+      <button data-section="draw">Weekly Draw</button>
       <button data-section="plan">Weekly Plan</button>
       <button data-section="today">Today</button>
       <button data-section="deck">Deck</button>
@@ -21,8 +35,10 @@
     <section id="welcome" class="section visible">
       <div class="hero">
         <h1>Design a life aligned with who you're becoming — one card at a time.</h1>
-        <p class="subtitle">This is a low‑fidelity prototype to demonstrate the flow.
-        Build your deck, draw weekly focus cards, and turn them into a simple plan.</p>
+        <p class="subtitle">
+          This is a low‑fidelity prototype to demonstrate the flow.
+          Build your deck, draw weekly focus cards, and turn them into a simple plan.
+        </p>
         <div class="actions">
           <button class="primary" id="beginBtn">Begin Your Deck</button>
           <button id="seedBtn">Load Example Deck</button>
@@ -31,7 +47,146 @@
       </div>
     </section>
 
-    <!-- (All other sections are injected by app.js) -->
+    <!-- How it works -->
+    <section id="how" class="section">
+      <div class="card info">
+        <h2>How the Deck Works</h2>
+        <ol>
+          <li><strong>Aces</strong> — transformational identity shifts (3–10 years)</li>
+          <li><strong>Kings & Queens</strong> — strategic projects (semester–year)</li>
+          <li><strong>J–2</strong> — weekly/daily habits that compound</li>
+          <li><strong>Weekly Draw</strong> — pick 3–5 to focus your week</li>
+          <li><strong>Plan & Review</strong> — make progress, reflect, iterate</li>
+        </ol>
+        <p class="muted">Suits: ♠ Career · ♣ Health & Fitness · ♥ Relationships · ♦ Finances</p>
+      </div>
+    </section>
+
+    <!-- Domains -->
+    <section id="domains" class="section">
+      <h2>Domains (Suits)</h2>
+      <div class="grid grid-2">
+        <div class="card domain">
+          <h3>♠ Spades — Career</h3>
+          <p>Growth, mastery, contribution</p>
+        </div>
+        <div class="card domain">
+          <h3>♣ Clubs — Health & Fitness</h3>
+          <p>Vitality, energy, resilience</p>
+        </div>
+        <div class="card domain">
+          <h3>♥ Hearts — Relationships</h3>
+          <p>Students, colleagues, collaborators, family</p>
+        </div>
+        <div class="card domain">
+          <h3>♦ Diamonds — Finances</h3>
+          <p>Grants, sustainability, freedom</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" data-goto="aces">Let's build your deck</button>
+      </div>
+    </section>
+
+    <!-- Aces -->
+    <section id="aces" class="section">
+      <h2>Create Your Aces</h2>
+      <p class="muted">Identity-level ambitions per domain. Keep them bold and measurable.</p>
+      <div class="grid grid-2" id="aceEditor"></div>
+      <div class="actions">
+        <button class="primary" data-goto="strategics">Save Aces & Continue</button>
+      </div>
+    </section>
+
+    <!-- Strategics -->
+    <section id="strategics" class="section">
+      <h2>Strategic Projects (Kings & Queens)</h2>
+      <p class="muted">Two per domain. Add finish lines and simple milestones.</p>
+      <div id="strategicEditor"></div>
+      <div class="actions">
+        <button class="primary" data-goto="habits">Save Strategics & Continue</button>
+      </div>
+    </section>
+
+    <!-- Habits -->
+    <section id="habits" class="section">
+      <h2>Tactical Habits (J–2)</h2>
+      <p class="muted">Pick 3 starter habits per domain to keep onboarding light. You can add more later.</p>
+      <div id="habitEditor"></div>
+      <div class="actions">
+        <button class="primary" data-goto="draw">Save Habits & Go to Draw</button>
+      </div>
+    </section>
+
+    <!-- Weekly Draw -->
+    <section id="draw" class="section">
+      <h2>Weekly Draw</h2>
+      <div class="controls">
+        <label><input type="checkbox" id="minPerDomain" checked> Ensure at least 1 per domain</label>
+        <label>Number of cards:
+          <select id="drawCount">
+            <option>3</option>
+            <option selected>4</option>
+            <option>5</option>
+          </select>
+        </label>
+        <button class="primary" id="drawBtn">🎴 Draw my cards</button>
+      </div>
+      <div id="drawResult" class="grid grid-4"></div>
+      <div class="actions">
+        <button class="primary" id="genPlanBtn">Generate Weekly Plan</button>
+      </div>
+    </section>
+
+    <!-- Weekly Plan -->
+    <section id="plan" class="section">
+      <h2>Weekly Plan</h2>
+      <p class="muted" id="capacityBanner">Capacity: —</p>
+      <div id="planGrid" class="plan-grid"></div>
+      <div class="actions">
+        <button class="primary" data-goto="today">Approve Plan & Go to Today</button>
+      </div>
+    </section>
+
+    <!-- Today -->
+    <section id="today" class="section">
+      <h2>Today</h2>
+      <div id="todayList" class="list"></div>
+    </section>
+
+    <!-- Deck -->
+    <section id="deck" class="section">
+      <h2>Your Deck</h2>
+      <div id="deckView"></div>
+      <div class="actions">
+        <button id="exportBtn">Export Deck JSON</button>
+        <a id="downloadLink" style="display:none;">Download</a>
+      </div>
+    </section>
+
+    <!-- Review -->
+    <section id="review" class="section">
+      <h2>Weekly Review</h2>
+      <div id="reviewView"></div>
+      <div class="actions">
+        <button id="newWeekBtn">Draw Next Week</button>
+      </div>
+    </section>
+
+    <!-- Insights -->
+    <section id="insights" class="section">
+      <h2>Insights</h2>
+      <div id="insightsView"></div>
+    </section>
+
+    <!-- Settings -->
+    <section id="settings" class="section">
+      <h2>Settings</h2>
+      <div class="controls">
+        <label>Weekly capacity (hours): <input type="number" id="capHours" value="8" min="1" max="40"></label>
+        <button id="saveSettingsBtn">Save</button>
+      </div>
+    </section>
   </main>
 
   <footer class="app-footer">
