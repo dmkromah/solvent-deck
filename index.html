@@ -1,0 +1,43 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solvent Deck – 52-Goal Digital Platform (Prototype)</title>
+  <link rel="stylesheet" href="styles.css" />
+</="draw">Weekly Draw</button>
+      <button data-section="plan">Weekly Plan</button>
+      <button data-section="today">Today</button>
+      <button data-section="deck">Deck</button>
+      <button data-section="review">Review</button>
+      <button data-section="insights">Insights</button>
+      <button data-section="settings">Settings</button>
+    </nav>
+  </header>
+
+  <main id="main">
+    <!-- Welcome -->
+    <section id="welcome" class="section visible">
+      <div class="hero">
+        <h1>Design a life aligned with who you're becoming — one card at a time.</h1>
+        <p class="subtitle">This is a low‑fidelity prototype to demonstrate the flow.
+        Build your deck, draw weekly focus cards, and turn them into a simple plan.</p>
+        <div class="actions">
+          <button class="primary" id="beginBtn">Begin Your Deck</button>
+          <button id="seedBtn">Load Example Deck</button>
+        </div>
+        <div class="progress-dots">● ○ ○ ○ ○</div>
+      </div>
+    </section>
+
+    <!-- (All other sections are injected by app.js) -->
+  </main>
+
+  <footer class="app-footer">
+    <small>Prototype v0.1 • LocalStorage only • No external libs</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
