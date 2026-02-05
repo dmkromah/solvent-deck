@@ -334,7 +334,25 @@
   const drawBtn = $('#drawBtn');
   if (drawBtn) drawBtn.addEventListener('click', drawWeekly);
 
-  const genPlanBtn = $('#genPlanBtn');
+  
+function generatePlan(){
+  // Ensure we have a deck and a selection
+  buildDeck(); // safe to call; no-ops if already built
+
+  const weekStart = state.draw.weekStart || fmtLocalDate(startOfWeek(new Date()));
+  const selectedIds = (state.draw && Array.isArray(state.draw.selected)) ? state.draw.selected : [];
+
+  // Guard: no cards selected → send user to Draw
+  if (!selectedIds.length) {
+    alert('No cards selected for this week yet.\n\nClick "Draw my cards" first, then try "Generate Weekly Plan" again.');
+    showSection('draw');
+    return;
+  }
+
+  const selected = state.deck.filter(c => selectedIds.includes(c.id));
+  const tasks = [];
+  // ... keep your existing scheduling logic here ...
+``
   if (genPlanBtn) genPlanBtn.addEventListener('click', ()=>{ generatePlan(); showSection('plan'); });
 
   // ---------- Plan (v0.3 + v0.3.1 copy with Alt) ----------
