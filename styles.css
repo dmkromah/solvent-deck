@@ -250,3 +250,27 @@ button.danger:hover {
 /* Small helper text spacing */
 .small { margin-top: 6px; display: block; }
 ``
+
+/* ===== v0.3 Drag & Drop + inline edit ===== */
+
+/* Drag visual cues */
+.day-col.drag-over { outline: 2px dashed #ffd166; outline-offset: 4px; }
+.task.dragging { opacity: 0.5; }
+
+/* Show grab cursor to hint it's movable */
+.task { cursor: move; }
+
+/* Inline-edit inputs */
+.inline-edit {
+  width: 100%;
+  background: #0f1631;
+  color: var(--text);
+  border: 1px solid #2a3460;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+}
+.inline-edit:focus {
+  outline: 3px solid #ffd166;
+  outline-offset: 2px;
+}
