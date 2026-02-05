@@ -70,6 +70,8 @@
     try { return JSON.parse(localStorage.getItem('solventDeckState')) || null } catch(e){ return null }
   }
   let state = load() || structuredClone(defaultState);
+// v0.3: bind drag/drop handlers only once
+let _dndBound = false;
 
   // ---------- Navigation ----------
   function showSection(id){
@@ -363,60 +365,197 @@
     renderPlan();
   }
 
-  function renderPlan(){
-    const root = $('#planGrid');
-    if(!root) return;
-    root.innerHTML = '';
-    const weekStart = state.plan.weekStart || fmtLocalDate(startOfWeek(new Date()));
-    const tasks = state.plan.tasks || [];
-    const perDay = [0,1,2,3,4,5,6].map(i => ({
-      date: fmtLocalDate(addDays(parseLocalDate(weekStart), i)),
-      tasks: []
-    }));
+  
+function renderPlan(){
+  const root = $('#planGrid');
+  if(!root) return;
+  root.innerHTML = '';
 
-    tasks.forEach(t => {
-      const dt = parseLocalDate(t.date);
-      const day = dt.getDay();           // Sun=0..Sat=6
-      const idx = (day + 6) % 7;         // Mon=0..Sun=6
-      perDay[idx].tasks.push(t);
+  const weekStart = state.plan.weekStart || fmtLocalDate(startOfWeek(new Date()));
+  const tasks = state.plan.tasks || [];
+
+  // Build day buckets for Mon..Sun using **local** dates
+  const perDay = [0,1,2,3,4,5,6].map(i => ({
+    date: fmtLocalDate(addDays(parseLocalDate(weekStart), i)),
+    tasks: []
+  }));
+
+  // Place tasks in buckets
+  tasks.forEach(t => {
+    const dt = parseLocalDate(t.date);
+    const day = dt.getDay();           // Sun=0..Sat=6
+    const idx = (day + 6) % 7;         // Mon=0..Sun=6
+    perDay[idx].tasks.push(t);
+  });
+
+  // Capacity banner
+  const totalMins = tasks.reduce((a,b)=>a+(b.duration||0),0);
+  const capMins = (state.settings.weeklyCapacityHours||8)*60;
+  const usage = Math.round((totalMins/capMins)*100);
+  const banner = `Capacity used: ${Math.round(totalMins/60)}h (${usage}%) of ${state.settings.weeklyCapacityHours}h`;
+  const capEl = $('#capacityBanner');
+  if (capEl) capEl.innerText = banner;
+
+  // Render columns and tasks
+  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  perDay.forEach((d, i) => {
+    const col = document.createElement('div');
+    col.className = 'day-col';
+    col.dataset.date = d.date; // <-- used by drop handler
+    col.innerHTML = `<h3>${dayNames[i]} <span class="small">${d.date}</span></h3>`;
+
+    d.tasks.forEach(t => {
+      const node = document.createElement('div');
+      node.className = 'task';
+      node.setAttribute('draggable', 'true');
+      node.dataset.taskId = t.id;
+
+      node.innerHTML = `
+        <div class="title" data-task-id="${t.id}" title="Click to edit title">${t.title}</div>
+        <div class="meta">
+          <span class="badge ${'suit-'+t.suit}">${suitMeta[t.suit].icon} ${t.rank}</span>
+          <span class="badge duration-badge" data-task-id="${t.id}" title="Click to edit minutes">${t.duration}m</span>
+          <button data-done="${t.id}">Mark done</button>
+        </div>`;
+      col.appendChild(node);
     });
 
-    // Capacity banner
-    const totalMins = tasks.reduce((a,b)=>a+(b.duration||0),0);
-    const capMins = (state.settings.weeklyCapacityHours||8)*60;
-    const usage = Math.round((totalMins/capMins)*100);
-    const banner = `Capacity used: ${Math.round(totalMins/60)}h (${usage}%) of ${state.settings.weeklyCapacityHours}h`;
-    const capEl = $('#capacityBanner');
-    if (capEl) capEl.innerText = banner;
+    root.appendChild(col);
+  });
 
-    const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    perDay.forEach((d, i) => {
-      const col = document.createElement('div');
-      col.className = 'day-col';
-      col.innerHTML = `<h3>${dayNames[i]} <span class="small">${d.date}</span></h3>`;
-      d.tasks.forEach(t => {
-        const node = document.createElement('div');
-        node.className = 'task';
-        node.innerHTML = `
-          <div class="title">${t.title}</div>
-          <div class="meta">
-            <span class="badge ${'suit-'+t.suit}">${suitMeta[t.suit].icon} ${t.rank}</span>
-            <span class="badge">${t.duration}m</span>
-            <button data-done="${t.id}">Mark done</button>
-          </div>`;
-        col.appendChild(node);
-      });
-      root.appendChild(col);
+  // Delegate once for DnD + inline edit
+  if (!_dndBound) {
+    _dndBound = true;
+
+    // DRAG START/END on tasks
+    root.addEventListener('dragstart', (e) => {
+      const taskEl = e.target.closest('.task');
+      if (!taskEl) return;
+      e.dataTransfer.setData('text/task-id', taskEl.dataset.taskId);
+      taskEl.classList.add('dragging');
     });
 
-    root.addEventListener('click', (e)=>{
-      const id = e.target.getAttribute && e.target.getAttribute('data-done');
-      if(id){
-        const t = (state.plan.tasks||[]).find(x=>x.id===id);
-        if(t){ t.status = 'done'; save(); renderPlan(); }
+    root.addEventListener('dragend', (e) => {
+      const taskEl = e.target.closest('.task');
+      if (taskEl) taskEl.classList.remove('dragging');
+    });
+
+    // DRAG OVER (allow drop) on columns
+    root.addEventListener('dragover', (e) => {
+      const col = e.target.closest('.day-col');
+      if (!col) return;
+      e.preventDefault(); // allow drop
+      col.classList.add('drag-over');
+    });
+
+    root.addEventListener('dragleave', (e) => {
+      const col = e.target.closest('.day-col');
+      if (col) col.classList.remove('drag-over');
+    });
+
+    // DROP on columns
+    root.addEventListener('drop', (e) => {
+      const col = e.target.closest('.day-col');
+      if (!col) return;
+      e.preventDefault();
+      col.classList.remove('drag-over');
+
+      const taskId = e.dataTransfer.getData('text/task-id');
+      if (!taskId) return;
+
+      const newDate = col.dataset.date;
+      const t = (state.plan.tasks||[]).find(x => x.id === taskId);
+      if (!t) return;
+
+      if (t.date !== newDate) {
+        t.date = newDate;
+        save();
+        renderPlan(); // re-render + recalc banner
       }
     });
+
+    // INLINE EDIT: Title
+    root.addEventListener('click', (e) => {
+      const titleEl = e.target.closest('.title');
+      if (!titleEl) return;
+
+      const taskId = titleEl.dataset.taskId;
+      const t = (state.plan.tasks||[]).find(x => x.id === taskId);
+      if (!t) return;
+
+      // Replace with input
+      const input = document.createElement('input');
+      input.className = 'inline-edit';
+      input.type = 'text';
+      input.value = t.title;
+      titleEl.replaceWith(input);
+      input.focus();
+      input.select();
+
+      const commit = () => {
+        const newVal = input.value.trim() || t.title;
+        t.title = newVal;
+        save();
+        renderPlan();
+      };
+      const cancel = () => renderPlan();
+
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') commit();
+        else if (ev.key === 'Escape') cancel();
+      });
+      input.addEventListener('blur', commit);
+    });
+
+    // INLINE EDIT: Duration (minutes)
+    root.addEventListener('click', (e) => {
+      const durEl = e.target.closest('.duration-badge');
+      if (!durEl) return;
+
+      const taskId = durEl.dataset.taskId;
+      const t = (state.plan.tasks||[]).find(x => x.id === taskId);
+      if (!t) return;
+
+      const input = document.createElement('input');
+      input.className = 'inline-edit';
+      input.type = 'number';
+      input.min = '5';
+      input.max = '240';
+      input.step = '5';
+      input.value = t.duration || 20;
+
+      durEl.replaceWith(input);
+      input.focus();
+      input.select();
+
+      const commit = () => {
+        const val = parseInt(input.value, 10);
+        if (!isNaN(val) && val > 0) {
+          t.duration = Math.max(5, Math.min(240, val));
+          save();
+          renderPlan();
+        } else {
+          renderPlan(); // invalid -> cancel
+        }
+      };
+      const cancel = () => renderPlan();
+
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') commit();
+        else if (ev.key === 'Escape') cancel();
+      });
+      input.addEventListener('blur', commit);
+    });
+
+    // MARK DONE (delegated)
+    root.addEventListener('click', (e) => {
+      const id = e.target.getAttribute && e.target.getAttribute('data-done');
+      if(!id) return;
+      const t = (state.plan.tasks||[]).find(x=>x.id===id);
+      if(t){ t.status = t.status==='done'?'planned':'done'; save(); renderPlan(); }
+    });
   }
+}
 
   // ---------- Today ----------
   function renderToday(){
