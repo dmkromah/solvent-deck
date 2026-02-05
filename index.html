@@ -8,34 +8,32 @@
   <title>Solvent Deck — 52‑Goal Digital Platform (Prototype)</title>
   <meta name="description" content="Design a balanced life across Career, Health & Fitness, Relationships, and Finances—one card at a time. Draw weekly focus, plan, and review." />
 
-  <!-- Open Graph / Twitter -->
+  <!-- Social preview (optional favicon path will still work if missing) -->
   <meta property="og:title" content="Solvent Deck — 52‑Goal Digital Platform" />
   <meta property="og:description" content="A playful system to align Aces (identity), Kings/Queens (strategy), and J–2 (habits). Draw weekly and compound progress." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="https://dmkromah.github.io/solvent-deck/favicon.svg" />
+  <meta property="og:image" content="favicon.svg" />
   <meta property="og:url" content="https://dmkromah.github.io/solvent-deck/" />
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="Solvent Deck — 52‑Goal Digital Platform" />
   <meta name="twitter:description" content="Draw weekly focus cards and turn them into a simple plan." />
-  <meta name="twitter:image" content="https://dmkromah.github.io/solvent-deck/favicon.svg" />
+  <meta name="twitter:image" content="favicon.svg" />
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <!-- Favicon (optional) -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml"/>
 
   <!-- Styles -->
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-
-  <!-- Skip link for keyboard users -->
+  <!-- Skip link -->
   <a class="skip-link" href="#main">Skip to main content</a>
 
   <header class="app-header" role="banner">
     <div class="brand" aria-label="Solvent Deck brand">
-      <img src="favicon.svg" class="logo" alt="Solvent Deck logo" width="20" height="20" />
+      <div class="logo">🎴</div>
       <div class="title">Solvent Deck</div>
     </div>
-
     <nav class="top-nav" id="topNav" role="navigation" aria-label="Primary">
       <button data-section="welcome">Welcome</button>
       <button data-section="how">How It Works</button>
@@ -59,8 +57,7 @@
       <div class="hero">
         <h1 id="welcome-h1">Design a life aligned with who you're becoming — one card at a time.</h1>
         <p class="subtitle">
-          This is a low‑fidelity prototype to demonstrate the flow.
-          Build your deck, draw weekly focus cards, and turn them into a simple plan.
+          This prototype shows the full loop: build your deck, draw weekly focus cards, and turn them into a simple plan.
         </p>
         <div class="actions">
           <button class="primary" id="beginBtn" aria-describedby="welcome-hint">Begin Your Deck</button>
@@ -75,9 +72,9 @@
       <div class="card info">
         <h2 id="how-h2">How the Deck Works</h2>
         <ol>
-          <li><strong>Aces</strong> — transformational identity shifts (3–10 years)</li>
-          <li><strong>Kings & Queens</strong> — strategic projects (semester–year)</li>
-          <li><strong>J–2</strong> — weekly/daily habits that compound</li>
+          <li><strong>Aces</strong> — multi‑year identity shifts</li>
+          <li><strong>Kings & Queens</strong> — annual/semester projects</li>
+          <li><strong>J–2</strong> — weekly/daily habits</li>
           <li><strong>Weekly Draw</strong> — pick 3–5 to focus your week</li>
           <li><strong>Plan & Review</strong> — make progress, reflect, iterate</li>
         </ol>
@@ -89,26 +86,12 @@
     <section id="domains" class="section" aria-labelledby="domains-h2">
       <h2 id="domains-h2">Domains (Suits)</h2>
       <div class="grid grid-2">
-        <div class="card domain">
-          <h3>♠ Spades — Career</h3>
-          <p>Growth, mastery, contribution</p>
-        </div>
-        <div class="card domain">
-          <h3>♣ Clubs — Health & Fitness</h3>
-          <p>Vitality, energy, resilience</p>
-        </div>
-        <div class="card domain">
-          <h3>♥ Hearts — Relationships</h3>
-          <p>Students, colleagues, collaborators, family</p>
-        </div>
-        <div class="card domain">
-          <h3>♦ Diamonds — Finances</h3>
-          <p>Grants, sustainability, freedom</p>
-        </div>
+        <div class="card domain"><h3>♠ Spades — Career</h3><p>Growth, mastery, contribution</p></div>
+        <div class="card domain"><h3>♣ Clubs — Health & Fitness</h3><p>Vitality, energy, resilience</p></div>
+        <div class="card domain"><h3>♥ Hearts — Relationships</h3><p>Students, colleagues, collaborators, family</p></div>
+        <div class="card domain"><h3>♦ Diamonds — Finances</h3><p>Grants, sustainability, freedom</p></div>
       </div>
-      <div class="actions">
-        <button class="primary" data-goto="aces">Let's build your deck</button>
-      </div>
+      <div class="actions"><button class="primary" data-goto="aces">Let's build your deck</button></div>
     </section>
 
     <!-- Aces -->
@@ -116,9 +99,7 @@
       <h2 id="aces-h2">Create Your Aces</h2>
       <p class="muted">Identity-level ambitions per domain. Keep them bold and measurable.</p>
       <div class="grid grid-2" id="aceEditor" aria-live="polite"></div>
-      <div class="actions">
-        <button class="primary" data-goto="strategics">Save Aces & Continue</button>
-      </div>
+      <div class="actions"><button class="primary" data-goto="strategics">Save Aces & Continue</button></div>
     </section>
 
     <!-- Strategics -->
@@ -126,38 +107,25 @@
       <h2 id="strategics-h2">Strategic Projects (Kings & Queens)</h2>
       <p class="muted">Two per domain. Add finish lines and simple milestones.</p>
       <div id="strategicEditor" aria-live="polite"></div>
-      <div class="actions">
-        <button class="primary" data-goto="habits">Save Strategics & Continue</button>
-      </div>
+      <div class="actions"><button class="primary" data-goto="habits">Save Strategics & Continue</button></div>
     </section>
 
     <!-- Habits -->
     <section id="habits" class="section" aria-labelledby="habits-h2">
       <h2 id="habits-h2">Tactical Habits (J–2)</h2>
-      <p class="muted">Pick 3 starter habits per domain to keep onboarding light. You can add more later.</p>
+      <p class="muted">Pick 3 starter habits per domain to keep onboarding light.</p>
       <div id="habitEditor" aria-live="polite"></div>
-      <div class="actions">
-        <button class="primary" data-goto="draw">Save Habits & Go to Draw</button>
-      </div>
+      <div class="actions"><button class="primary" data-goto="draw">Save Habits & Go to Draw</button></div>
     </section>
 
     <!-- Weekly Draw -->
-    
-<section id="draw" class="section">
-  <!-- … your draw controls … -->
-  <div class="actions">
-    <button class="primary" id="genPlanBtn">Generate Weekly Plan</button>
-  </div>
-</section>
-            <p class="small muted">Hint: Keep “min 1 per domain” on for a balanced week.</p>
+    <section id="draw" class="section" aria-labelledby="draw-h2">
+      <h2 id="draw-h2">Weekly Draw</h2>
+      <p class="small muted">Hint: Keep “min 1 per domain” on for a balanced week.</p>
       <div class="controls">
         <label><input type="checkbox" id="minPerDomain" checked> Ensure at least 1 per domain</label>
         <label>Number of cards:
-          <select id="drawCount">
-            <option>3</option>
-            <option selected>4</option>
-            <option>5</option>
-          </select>
+          <select id="drawCount"><option>3</option><option selected>4</option><option>5</option></select>
         </label>
         <button class="primary" id="drawBtn">🎴 Draw my cards</button>
       </div>
@@ -171,14 +139,11 @@
     <section id="plan" class="section" aria-labelledby="plan-h2">
       <h2 id="plan-h2">Weekly Plan</h2>
       <p class="small muted">
-  Hint: You can mark tasks done here or in <strong>Today</strong>. 
-  <strong>Hold Alt while dragging</strong> to copy a task.
-</p>
+        Hint: Mark tasks done here or in <strong>Today</strong>. <strong>Hold Alt while dragging</strong> to copy a task.
+      </p>
       <p class="muted" id="capacityBanner">Capacity: —</p>
       <div id="planGrid" class="plan-grid" aria-live="polite"></div>
-      <div class="actions">
-        <button class="primary" data-goto="today">Approve Plan & Go to Today</button>
-      </div>
+      <div class="actions"><button class="primary" data-goto="today">Approve Plan & Go to Today</button></div>
     </section>
 
     <!-- Today -->
@@ -201,9 +166,7 @@
     <section id="review" class="section" aria-labelledby="review-h2">
       <h2 id="review-h2">Weekly Review</h2>
       <div id="reviewView" aria-live="polite"></div>
-      <div class="actions">
-        <button id="newWeekBtn" data-goto="draw">Draw Next Week</button>
-      </div>
+      <div class="actions"><button id="newWeekBtn" data-goto="draw">Draw Next Week</button></div>
     </section>
 
     <!-- Insights -->
@@ -224,12 +187,10 @@
   </main>
 
   <footer class="app-footer" role="contentinfo">
-    <small>Prototype v0.2 • LocalStorage only • No external libs</small>
+    <small>Prototype v0.3.1 • LocalStorage only • No external libs</small>
   </footer>
 
-  <!-- Scripts -->
+  <!-- Script -->
   <script src="app.js"></script>
 </body>
 </html>
-``
-
