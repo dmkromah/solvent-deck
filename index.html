@@ -1,19 +1,42 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Solvent Deck – 52-Goal Digital Platform (Prototype)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Solvent Deck — 52‑Goal Digital Platform (Prototype)</title>
+  <meta name="description" content="Design a balanced life across Career, Health & Fitness, Relationships, and Finances—one card at a time. Draw weekly focus, plan, and review." />
+
+  <!-- Open Graph / Twitter -->
+  <meta property="og:title" content="Solvent Deck — 52‑Goal Digital Platform" />
+  <meta property="og:description" content="A playful system to align Aces (identity), Kings/Queens (strategy), and J–2 (habits). Draw weekly and compound progress." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://dmkromah.github.io/solvent-deck/favicon.svg" />
+  <meta property="og:url" content="https://dmkromah.github.io/solvent-deck/" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Solvent Deck — 52‑Goal Digital Platform" />
+  <meta name="twitter:description" content="Draw weekly focus cards and turn them into a simple plan." />
+  <meta name="twitter:image" content="https://dmkromah.github.io/solvent-deck/favicon.svg" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+  <!-- Styles -->
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="app-header">
-    <div class="brand">
-      <div class="logo">🎴</div>
+
+  <!-- Skip link for keyboard users -->
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="app-header" role="banner">
+    <div class="brand" aria-label="Solvent Deck brand">
+      <img src="favicon.svg" class="logo" alt="Solvent Deck logo" width="20" height="20" />
       <div class="title">Solvent Deck</div>
     </div>
-    <nav class="top-nav" id="topNav">
+
+    <nav class="top-nav" id="topNav" role="navigation" aria-label="Primary">
       <button data-section="welcome">Welcome</button>
       <button data-section="how">How It Works</button>
       <button data-section="domains">Domains</button>
@@ -30,27 +53,27 @@
     </nav>
   </header>
 
-  <main id="main">
+  <main id="main" role="main" tabindex="-1">
     <!-- Welcome -->
-    <section id="welcome" class="section visible">
+    <section id="welcome" class="section visible" aria-labelledby="welcome-h1">
       <div class="hero">
-        <h1>Design a life aligned with who you're becoming — one card at a time.</h1>
+        <h1 id="welcome-h1">Design a life aligned with who you're becoming — one card at a time.</h1>
         <p class="subtitle">
           This is a low‑fidelity prototype to demonstrate the flow.
           Build your deck, draw weekly focus cards, and turn them into a simple plan.
         </p>
         <div class="actions">
-          <button class="primary" id="beginBtn">Begin Your Deck</button>
-          <button id="seedBtn">Load Example Deck</button>
+          <button class="primary" id="beginBtn" aria-describedby="welcome-hint">Begin Your Deck</button>
+          <button id="seedBtn" aria-label="Load a complete example deck for demo">Load Example Deck</button>
         </div>
-        <div class="progress-dots">● ○ ○ ○ ○</div>
+        <p id="welcome-hint" class="small muted">Tip: Use “Load Example Deck” for a quick tour.</p>
       </div>
     </section>
 
     <!-- How it works -->
-    <section id="how" class="section">
+    <section id="how" class="section" aria-labelledby="how-h2">
       <div class="card info">
-        <h2>How the Deck Works</h2>
+        <h2 id="how-h2">How the Deck Works</h2>
         <ol>
           <li><strong>Aces</strong> — transformational identity shifts (3–10 years)</li>
           <li><strong>Kings & Queens</strong> — strategic projects (semester–year)</li>
@@ -63,8 +86,8 @@
     </section>
 
     <!-- Domains -->
-    <section id="domains" class="section">
-      <h2>Domains (Suits)</h2>
+    <section id="domains" class="section" aria-labelledby="domains-h2">
+      <h2 id="domains-h2">Domains (Suits)</h2>
       <div class="grid grid-2">
         <div class="card domain">
           <h3>♠ Spades — Career</h3>
@@ -89,38 +112,39 @@
     </section>
 
     <!-- Aces -->
-    <section id="aces" class="section">
-      <h2>Create Your Aces</h2>
+    <section id="aces" class="section" aria-labelledby="aces-h2">
+      <h2 id="aces-h2">Create Your Aces</h2>
       <p class="muted">Identity-level ambitions per domain. Keep them bold and measurable.</p>
-      <div class="grid grid-2" id="aceEditor"></div>
+      <div class="grid grid-2" id="aceEditor" aria-live="polite"></div>
       <div class="actions">
         <button class="primary" data-goto="strategics">Save Aces & Continue</button>
       </div>
     </section>
 
     <!-- Strategics -->
-    <section id="strategics" class="section">
-      <h2>Strategic Projects (Kings & Queens)</h2>
+    <section id="strategics" class="section" aria-labelledby="strategics-h2">
+      <h2 id="strategics-h2">Strategic Projects (Kings & Queens)</h2>
       <p class="muted">Two per domain. Add finish lines and simple milestones.</p>
-      <div id="strategicEditor"></div>
+      <div id="strategicEditor" aria-live="polite"></div>
       <div class="actions">
         <button class="primary" data-goto="habits">Save Strategics & Continue</button>
       </div>
     </section>
 
     <!-- Habits -->
-    <section id="habits" class="section">
-      <h2>Tactical Habits (J–2)</h2>
+    <section id="habits" class="section" aria-labelledby="habits-h2">
+      <h2 id="habits-h2">Tactical Habits (J–2)</h2>
       <p class="muted">Pick 3 starter habits per domain to keep onboarding light. You can add more later.</p>
-      <div id="habitEditor"></div>
+      <div id="habitEditor" aria-live="polite"></div>
       <div class="actions">
         <button class="primary" data-goto="draw">Save Habits & Go to Draw</button>
       </div>
     </section>
 
     <!-- Weekly Draw -->
-    <section id="draw" class="section">
-      <h2>Weekly Draw</h2>
+    <section id="draw" class="section" aria-labelledby="draw-h2">
+      <h2 id="draw-h2">Weekly Draw</h2>
+      <p class="small muted">Hint: Keep “min 1 per domain” on for a balanced week.</p>
       <div class="controls">
         <label><input type="checkbox" id="minPerDomain" checked> Ensure at least 1 per domain</label>
         <label>Number of cards:
@@ -132,32 +156,33 @@
         </label>
         <button class="primary" id="drawBtn">🎴 Draw my cards</button>
       </div>
-      <div id="drawResult" class="grid grid-4"></div>
+      <div id="drawResult" class="grid grid-4" aria-live="polite"></div>
       <div class="actions">
         <button class="primary" id="genPlanBtn">Generate Weekly Plan</button>
       </div>
     </section>
 
     <!-- Weekly Plan -->
-    <section id="plan" class="section">
-      <h2>Weekly Plan</h2>
+    <section id="plan" class="section" aria-labelledby="plan-h2">
+      <h2 id="plan-h2">Weekly Plan</h2>
+      <p class="small muted">Hint: You can mark tasks done here or in <strong>Today</strong>.</p>
       <p class="muted" id="capacityBanner">Capacity: —</p>
-      <div id="planGrid" class="plan-grid"></div>
+      <div id="planGrid" class="plan-grid" aria-live="polite"></div>
       <div class="actions">
         <button class="primary" data-goto="today">Approve Plan & Go to Today</button>
       </div>
     </section>
 
     <!-- Today -->
-    <section id="today" class="section">
-      <h2>Today</h2>
-      <div id="todayList" class="list"></div>
+    <section id="today" class="section" aria-labelledby="today-h2">
+      <h2 id="today-h2">Today</h2>
+      <div id="todayList" class="list" aria-live="polite"></div>
     </section>
 
     <!-- Deck -->
-    <section id="deck" class="section">
-      <h2>Your Deck</h2>
-      <div id="deckView"></div>
+    <section id="deck" class="section" aria-labelledby="deck-h2">
+      <h2 id="deck-h2">Your Deck</h2>
+      <div id="deckView" aria-live="polite"></div>
       <div class="actions">
         <button id="exportBtn">Export Deck JSON</button>
         <a id="downloadLink" style="display:none;">Download</a>
@@ -165,34 +190,38 @@
     </section>
 
     <!-- Review -->
-    <section id="review" class="section">
-      <h2>Weekly Review</h2>
-      <div id="reviewView"></div>
+    <section id="review" class="section" aria-labelledby="review-h2">
+      <h2 id="review-h2">Weekly Review</h2>
+      <div id="reviewView" aria-live="polite"></div>
       <div class="actions">
-        <button id="newWeekBtn">Draw Next Week</button>
+        <button id="newWeekBtn" data-goto="draw">Draw Next Week</button>
       </div>
     </section>
 
     <!-- Insights -->
-    <section id="insights" class="section">
-      <h2>Insights</h2>
-      <div id="insightsView"></div>
+    <section id="insights" class="section" aria-labelledby="insights-h2">
+      <h2 id="insights-h2">Insights</h2>
+      <div id="insightsView" aria-live="polite"></div>
     </section>
 
     <!-- Settings -->
-    <section id="settings" class="section">
-      <h2>Settings</h2>
+    <section id="settings" class="section" aria-labelledby="settings-h2">
+      <h2 id="settings-h2">Settings</h2>
       <div class="controls">
         <label>Weekly capacity (hours): <input type="number" id="capHours" value="8" min="1" max="40"></label>
         <button id="saveSettingsBtn">Save</button>
+        <button id="resetBtn" class="danger" aria-label="Reset the app to factory state">Reset data</button>
       </div>
     </section>
   </main>
 
-  <footer class="app-footer">
-    <small>Prototype v0.1 • LocalStorage only • No external libs</small>
+  <footer class="app-footer" role="contentinfo">
+    <small>Prototype v0.2 • LocalStorage only • No external libs</small>
   </footer>
 
+  <!-- Scripts -->
   <script src="app.js"></script>
 </body>
 </html>
+``
+
