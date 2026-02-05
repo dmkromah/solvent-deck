@@ -310,8 +310,10 @@ const todayISO = () => fmtLocalDate(new Date());
       if(!selected.find(x=>x.id===c.id)) selected.push(c);
     }
 
-    const weekStart = startOfWeek(new Date());
-    state.draw = { weekStart: fmtDate(weekStart), selected: selected.map(c=>c.id) };
+    
+const weekStart = startOfWeek(new Date());
+state.draw = { weekStart: fmtLocalDate(weekStart), selected: selected.map(c=>c.id) };
+
     save();
 
     renderDraw();
@@ -346,14 +348,14 @@ const todayISO = () => fmtLocalDate(new Date());
   // ---------- Plan ----------
   function generatePlan(){
     // create plan tasks for week based on draw
-    const weekStart = state.draw.weekStart || fmtDate(startOfWeek(new Date()));
+    const weekStart = state.draw.weekStart || fmtLocalDate(startOfWeek(new Date()));
     const selected = state.deck.filter(c => (state.draw.selected||[]).includes(c.id));
     const tasks = [];
 
     selected.forEach(c => {
       if(['K','Q'].includes(c.rank)){
         // create 1 milestone midweek
-        const date = fmtDate(addDays(new Date(weekStart), 2)); // Wed
+        const date = fmtLocalDate(addDays(new Date(weekStart), 2)); // Wed
         tasks.push({ id: 't-'+c.id+'-WED', date, title: c.title + ' — milestone', suit:c.suit, rank:c.rank, duration: c.mins || 60, status:'planned' });
       } else {
         // Habit scheduling
@@ -376,9 +378,9 @@ const todayISO = () => fmtLocalDate(new Date());
     const root = $('#planGrid');
     if(!root) return;
     root.innerHTML = '';
-    const weekStart = state.plan.weekStart || fmtDate(startOfWeek(new Date()));
+    const weekStart = state.plan.weekStart || fmtLocalDate(startOfWeek(new Date()));
     const tasks = state.plan.tasks || [];
-    const perDay = [0,1,2,3,4,5,6].map(i => ({ date: fmtDate(addDays(new Date(weekStart), i)), tasks: [] }));
+    const perDay = [0,1,2,3,4,5,6].map(i => ({ date: fmtLocalDate(addDays(new Date(weekStart), i)), tasks: [] }));
     tasks.forEach(t => {
       const idx = (new Date(t.date).getDay()+6)%7; // Mon=0..Sun=6
       perDay[idx].tasks.push(t);
