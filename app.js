@@ -72,6 +72,8 @@
   let state = load() || structuredClone(defaultState);
 // v0.3: bind drag/drop handlers only once
 let _dndBound = false;
+// v0.3.1: copy-mode flag (true while Alt is held)
+let _copyMode = false;
 
   // ---------- Navigation ----------
   function showSection(id){
@@ -424,55 +426,174 @@ function renderPlan(){
   });
 
   // Delegate once for DnD + inline edit
-  if (!_dndBound) {
-    _dndBound = true;
+ 
+if (!_dndBound) {
+  _dndBound = true;
 
-    // DRAG START/END on tasks
-    root.addEventListener('dragstart', (e) => {
-      const taskEl = e.target.closest('.task');
-      if (!taskEl) return;
-      e.dataTransfer.setData('text/task-id', taskEl.dataset.taskId);
-      taskEl.classList.add('dragging');
+  // --- Copy-mode keyboard listeners (Alt toggles copy)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Alt') {
+      _copyMode = true;
+      document.body.classList.add('copy-mode');
+    }
+  });
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'Alt') {
+      _copyMode = false;
+      document.body.classList.remove('copy-mode');
+    }
+  });
+
+  // DRAG START/END on tasks
+  root.addEventListener('dragstart', (e) => {
+    const taskEl = e.target.closest('.task');
+    if (!taskEl) return;
+
+    // allow both copy & move depending on Alt
+    e.dataTransfer.effectAllowed = 'copyMove';
+
+    // snapshot the current copy mode at drag start (also respect Alt pressed at start)
+    const isCopy = _copyMode || !!e.altKey;
+    e.dataTransfer.setData('text/task-id', taskEl.dataset.taskId);
+    e.dataTransfer.setData('text/copy', isCopy ? '1' : '0');
+
+    if (isCopy) taskEl.classList.add('copying');
+    taskEl.classList.add('dragging');
+  });
+
+  root.addEventListener('dragend', (e) => {
+    const taskEl = e.target.closest('.task');
+    if (taskEl) {
+      taskEl.classList.remove('dragging');
+      taskEl.classList.remove('copying');
+    }
+  });
+
+  // DRAG OVER (allow drop) on columns
+  root.addEventListener('dragover', (e) => {
+    const col = e.target.closest('.day-col');
+    if (!col) return;
+    e.preventDefault();                         // allow drop
+    e.dataTransfer.dropEffect = _copyMode ? 'copy' : 'move';
+    col.classList.add('drag-over');
+  });
+
+  root.addEventListener('dragleave', (e) => {
+    const col = e.target.closest('.day-col');
+    if (col) col.classList.remove('drag-over');
+  });
+
+  // DROP on columns (move OR copy)
+  root.addEventListener('drop', (e) => {
+    const col = e.target.closest('.day-col');
+    if (!col) return;
+    e.preventDefault();
+    col.classList.remove('drag-over');
+
+    const taskId = e.dataTransfer.getData('text/task-id');
+    const copyMeta = e.dataTransfer.getData('text/copy');
+    const isCopy = (copyMeta === '1') || _copyMode; // also honor live Alt mode
+    if (!taskId) return;
+
+    const newDate = col.dataset.date;
+    const t = (state.plan.tasks||[]).find(x => x.id === taskId);
+    if (!t) return;
+
+    if (isCopy) {
+      // create a shallow clone with a new id & date (status planned)
+      const newId = 't-' + Date.now() + '-' + Math.floor(Math.random() * 1e6);
+      const clone = { ...t, id: newId, date: newDate, status: 'planned' };
+      state.plan.tasks.push(clone);
+    } else {
+      // MOVE
+      if (t.date !== newDate) t.date = newDate;
+    }
+
+    save();
+    renderPlan(); // re-render + recalc banner
+  });
+
+  // INLINE EDIT: Title
+  root.addEventListener('click', (e) => {
+    const titleEl = e.target.closest('.title');
+    if (!titleEl) return;
+
+    const taskId = titleEl.dataset.taskId;
+    const t = (state.plan.tasks||[]).find(x => x.id === taskId);
+    if (!t) return;
+
+    // Replace with input
+    const input = document.createElement('input');
+    input.className = 'inline-edit';
+    input.type = 'text';
+    input.value = t.title;
+    titleEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    const commit = () => {
+      const newVal = input.value.trim() || t.title;
+      t.title = newVal;
+      save();
+      renderPlan();
+    };
+    const cancel = () => renderPlan();
+
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') commit();
+      else if (ev.key === 'Escape') cancel();
     });
+    input.addEventListener('blur', commit);
+  });
 
-    root.addEventListener('dragend', (e) => {
-      const taskEl = e.target.closest('.task');
-      if (taskEl) taskEl.classList.remove('dragging');
-    });
+  // INLINE EDIT: Duration (minutes)
+  root.addEventListener('click', (e) => {
+    const durEl = e.target.closest('.duration-badge');
+    if (!durEl) return;
 
-    // DRAG OVER (allow drop) on columns
-    root.addEventListener('dragover', (e) => {
-      const col = e.target.closest('.day-col');
-      if (!col) return;
-      e.preventDefault(); // allow drop
-      col.classList.add('drag-over');
-    });
+    const taskId = durEl.dataset.taskId;
+    const t = (state.plan.tasks||[]).find(x => x.id === taskId);
+    if (!t) return;
 
-    root.addEventListener('dragleave', (e) => {
-      const col = e.target.closest('.day-col');
-      if (col) col.classList.remove('drag-over');
-    });
+    const input = document.createElement('input');
+    input.className = 'inline-edit';
+    input.type = 'number';
+    input.min = '5';
+    input.max = '240';
+    input.step = '5';
+    input.value = t.duration || 20;
 
-    // DROP on columns
-    root.addEventListener('drop', (e) => {
-      const col = e.target.closest('.day-col');
-      if (!col) return;
-      e.preventDefault();
-      col.classList.remove('drag-over');
+    durEl.replaceWith(input);
+    input.focus();
+    input.select();
 
-      const taskId = e.dataTransfer.getData('text/task-id');
-      if (!taskId) return;
-
-      const newDate = col.dataset.date;
-      const t = (state.plan.tasks||[]).find(x => x.id === taskId);
-      if (!t) return;
-
-      if (t.date !== newDate) {
-        t.date = newDate;
+    const commit = () => {
+      const val = parseInt(input.value, 10);
+      if (!isNaN(val) && val > 0) {
+        t.duration = Math.max(5, Math.min(240, val));
         save();
-        renderPlan(); // re-render + recalc banner
+        renderPlan();
+      } else {
+        renderPlan(); // invalid -> cancel
       }
+    };
+    const cancel = () => renderPlan();
+
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') commit();
+      else if (ev.key === 'Escape') cancel();
     });
+    input.addEventListener('blur', commit);
+  });
+
+  // MARK DONE (delegated)
+  root.addEventListener('click', (e) => {
+    const id = e.target.getAttribute && e.target.getAttribute('data-done');
+    if(!id) return;
+    const t = (state.plan.tasks||[]).find(x=>x.id===id);
+    if(t){ t.status = t.status==='done'?'planned':'done'; save(); renderPlan(); }
+  });
+}
 
     // INLINE EDIT: Title
     root.addEventListener('click', (e) => {
