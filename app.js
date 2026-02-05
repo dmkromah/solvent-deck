@@ -3,18 +3,46 @@
   // ---------- Utility ----------
   const $ = (sel, root=document) => root.querySelector(sel);
   const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-  const todayISO = () => new Date().toISOString().slice(0,10);
-  const startOfWeek = (d=new Date()) => {
-    // Start Monday
-    const day = d.getDay();
-    const diff = (day === 0 ? -6 : 1) - day; // Mon=1..Sun=0
-    const monday = new Date(d);
-    monday.setDate(d.getDate() + diff);
-    monday.setHours(0,0,0,0);
-    return monday;
-  };
-  const addDays = (d, n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
-  const fmtDate = d => new Date(d).toISOString().slice(0,10);
+  
+
+// ---- Local-only date helpers (no UTC drift) ----
+const pad2 = n => (n < 10 ? '0' + n : '' + n);
+
+// Return YYYY-MM-DD in **local time**
+const fmtLocalDate = (dateObj) => {
+  const y = dateObj.getFullYear();
+  const m = pad2(dateObj.getMonth() + 1);
+  const d = pad2(dateObj.getDate());
+  return `${y}-${m}-${d}`;
+};
+
+// Parse YYYY-MM-DD as **local** date (00:00 local)
+const parseLocalDate = (ymd) => {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0, 0);
+};
+
+// Monday as start of week, returns **Date (local)**
+const startOfWeek = (d = new Date()) => {
+  const day = d.getDay();          // Sun=0 .. Sat=6
+  const diff = (day === 0 ? -6 : 1) - day; // shift to Monday
+  const monday = new Date(d);
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(monday.getDate() + diff);
+  return monday;
+};
+
+// Add days in **local** time
+const addDays = (d, n) => {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+};
+
+// Today as **YYYY-MM-DD** in local
+const todayISO = () => fmtLocalDate(new Date());
+
+
   const rnd = (min, max) => Math.floor(Math.random()*(max-min+1))+min;
 
   // ---------- App State ----------
