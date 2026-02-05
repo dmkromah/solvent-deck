@@ -348,15 +348,25 @@ state.draw = { weekStart: fmtLocalDate(weekStart), selected: selected.map(c=>c.i
   // ---------- Plan ----------
   function generatePlan(){
     // create plan tasks for week based on draw
-    const weekStart = state.draw.weekStart || fmtLocalDate(startOfWeek(new Date()));
-    const selected = state.deck.filter(c => (state.draw.selected||[]).includes(c.id));
-    const tasks = [];
+   
+const weekStart = state.draw.weekStart || fmtLocalDate(startOfWeek(new Date()));
+// ...
 
-    selected.forEach(c => {
-      if(['K','Q'].includes(c.rank)){
-        // create 1 milestone midweek
-        const date = fmtLocalDate(addDays(new Date(weekStart), 2)); // Wed
-        tasks.push({ id: 't-'+c.id+'-WED', date, title: c.title + ' — milestone', suit:c.suit, rank:c.rank, duration: c.mins || 60, status:'planned' });
+    
+const date = fmtLocalDate(addDays(new Date(weekStart), 2)); // Wed
+// ...
+days.forEach(d => {
+  tasks.push({
+    id: 't-'+c.id+'-'+d,
+    date: fmtLocalDate(addDays(parseLocalDate(weekStart), d)),
+    title: c.title,
+    suit: c.suit,
+    rank: c.rank,
+    duration: c.duration || 20,
+    status: 'planned'
+  });
+});
+
       } else {
         // Habit scheduling
         let days = [];
@@ -380,10 +390,19 @@ state.draw = { weekStart: fmtLocalDate(weekStart), selected: selected.map(c=>c.i
     root.innerHTML = '';
     const weekStart = state.plan.weekStart || fmtLocalDate(startOfWeek(new Date()));
     const tasks = state.plan.tasks || [];
-    const perDay = [0,1,2,3,4,5,6].map(i => ({ date: fmtLocalDate(addDays(new Date(weekStart), i)), tasks: [] }));
-    tasks.forEach(t => {
-      const idx = (new Date(t.date).getDay()+6)%7; // Mon=0..Sun=6
-      perDay[idx].tasks.push(t);
+    
+const perDay = [0,1,2,3,4,5,6].map(i => ({
+  date: fmtLocalDate(addDays(parseLocalDate(weekStart), i)),
+  tasks: []
+}));
+
+tasks.forEach(t => {
+  const dt = parseLocalDate(t.date);           // parse safely in local time
+  const day = dt.getDay();                     // Sun=0..Sat=6
+  const idx = (day + 6) % 7;                   // Mon=0..Sun=6
+  perDay[idx].tasks.push(t);
+});
+
     });
 
     // Capacity banner
@@ -428,8 +447,10 @@ state.draw = { weekStart: fmtLocalDate(weekStart), selected: selected.map(c=>c.i
     const root = $('#todayList');
     if(!root) return;
     root.innerHTML = '';
-    const today = fmtDate(new Date());
-    const tasks = (state.plan.tasks||[]).filter(t => t.date===today);
+    
+const today = fmtLocalDate(new Date());
+const tasks = (state.plan.tasks||[]).filter(t => t.date === today);
+
 
     if(tasks.length===0){ root.innerHTML = '<div class="muted">No tasks scheduled today.</div>'; return; }
 
