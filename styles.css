@@ -274,3 +274,7 @@ button.danger:hover {
   outline: 3px solid #ffd166;
   outline-offset: 2px;
 }
+
+/* ===== v0.3.1 Drag-to-Copy polish ===== */
+body.copy-mode .task { cursor: copy; }           /* visual hint when Alt is held */
+.task.copying { box-shadow: 0 0 0 2px #ffd16666; } /* subtle halo while dragging in copy mode */
