@@ -51,8 +51,98 @@
     </nav>
   </header>
 
-  <main id="main" role="main" tabindex="-1">
+  <main id="main" 
+<!-- Onboarding Tour (Option A) -->
+<div id="tourOverlay" class="tour-overlay" aria-hidden="true">
+  <div class="tour-modal" role="dialog" aria-modal="true" aria-labelledby="tourTitle" aria-describedby="tourBody">
+    <button class="tour-close" id="tourCloseBtn" aria-label="Close tour">✕</button>
+
+    <div class="tour-steps">
+      <!-- Step 1 -->
+      <section class="tour-step" data-step="1">
+        <h2 id="tourTitle">Welcome to Solvent Deck</h2>
+        <p id="tourBody" class="muted">
+          Design a balanced life — one card at a time. Solvent Deck helps you focus each week across
+          <strong>Career ♠</strong>, <strong>Health &amp; Fitness ♣</strong>, <strong>Relationships ♥</strong>, and <strong>Finances ♦</strong>.
+        </p>
+        <ul class="tour-bullets">
+          <li>Use the suits to keep life domains in view.</li>
+          <li>Cards represent Aces (identity), K/Q (strategy), and J–2 (habits).</li>
+          <li>No sign‑in. Your data is stored locally in your browser.</li>
+        </ul>
+        <div class="tour-actions">
+          <button class="primary" id="tourNext1">Next →</button>
+        </div>
+      </section>
+
+      <!-- Step 2 -->
+      <section class="tour-step" data-step="2" hidden>
+        <h2>Step 1 — Build or Load your Deck</h2>
+        <p class="muted">
+          Start fast with the <strong>Load Example Deck</strong> button (on Welcome), or build your own:
+        </p>
+        <ul class="tour-bullets">
+          <li><strong>Aces:</strong> Bold identity goals per suit.</li>
+          <li><strong>Kings/Queens:</strong> Strategic projects with end dates.</li>
+          <li><strong>J–2 habits:</strong> Simple daily/weekly actions.</li>
+        </ul>
+        <div class="tour-actions">
+          <button class="secondary" data-tour-prev>← Back</button>
+          <button class="primary" id="tourNext2">Next →</button>
+        </div>
+      </section>
+
+      <!-- Step 3 -->
+      <section class="tour-step" data-step="3" hidden>
+        <h2>Step 2 — Weekly Draw → Generate Plan</h2>
+        <p class="muted">
+          Draw 3–5 focus cards for a balanced week, then generate a simple plan.
+        </p>
+        <ul class="tour-bullets">
+          <li>Keep “Ensure at least 1 per domain” on for balance.</li>
+          <li>Click <strong>🎴 Draw my cards</strong>, then <strong>Generate Weekly Plan</strong>.</li>
+          <li>Check the <strong>Capacity used</strong> banner to stay realistic.</li>
+        </ul>
+        <div class="tour-actions">
+          <button class="secondary" data-tour-prev>← Back</button>
+          <button class="primary" id="tourNext3">Next →</button>
+        </div>
+      </section>
+
+      <!-- Step 4 -->
+      <section class="tour-step" data-step="4" hidden>
+        <h2>Step 3 — Make it your week</h2>
+        <p class="muted">
+          Adjust your plan quickly, then track progress:
+        </p>
+        <ul class="tour-bullets">
+          <li><strong>Drag</strong> tasks to different days.</li>
+          <li><strong>Hold Alt</strong> while dragging to <strong>copy</strong> a task.</li>
+          <li><strong>Click</strong> a task title or minutes to edit.</li>
+          <li><strong>Mark done</strong> here or in <strong>Today</strong>.</li>
+        </ul>
+        <div class="tour-actions">
+          <label class="small muted" style="display:flex; gap:6px; align-items:center;">
+            <input type="checkbox" id="tourDontShow" />
+            Don’t show this tour next time
+          </label>
+          <button class="secondary" data-tour-prev>← Back</button>
+          <button class="primary" id="tourFinishBtn">Finish</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="tour-dots" aria-hidden="true">
+      <span data-dot="1" class="active">●</span>
+      <span data-dot="2">○</span>
+      <span data-dot="3">○</span>
+      <span data-dot="4">○</span>
+    </div>
+  </div>
+</div>
+role="main" tabindex="-1">
     <!-- Welcome -->
+    <button id="openTourBtn" aria-label="Open quick tour">Quick Tour</button>
     <section id="welcome" class="section visible" aria-labelledby="welcome-h1">
       <div class="hero">
         <h1 id="welcome-h1">Design a life aligned with who you're becoming — one card at a time.</h1>
