@@ -199,3 +199,219 @@ button.danger:hover { border-color: #ff5a5a; color: #ffffff; }
   from { transform: translateY(8px); opacity: 0; }
   to   { transform: translateY(0); opacity: 1; }
 }
+
+/* =========================================================
+   Solvent Deck • v0.3.1 — Visual & Readability Upgrade (Option B)
+   ========================================================= */
+
+/* ---------- 0) Layout rhythm & container widths ---------- */
+:root {
+  --container-max: 1120px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --radius-1: 8px;
+  --radius-2: 10px;
+  --radius-3: 12px;
+  --radius-4: 16px;
+  --shadow-card: 0 8px 30px rgba(0,0,0,0.18);
+}
+
+/* Constrain main content gently for large desktops */
+main { 
+  max-width: var(--container-max); 
+  margin-inline: auto; 
+  padding: var(--space-5) var(--space-4);
+}
+
+.section { 
+  margin-block: var(--space-7); 
+}
+
+/* ---------- 1) Typography & readability ---------- */
+html { 
+  font-size: 16px; 
+}
+body {
+  line-height: 1.6;
+  letter-spacing: 0.1px;
+}
+
+/* Responsive type scale */
+h1, h2, h3 { line-height: 1.25; margin: 0 0 var(--space-4); }
+h1 { font-size: clamp(1.6rem, 1.1rem + 2vw, 2.2rem); }
+h2 { font-size: clamp(1.25rem, 1rem + 1.2vw, 1.6rem); }
+h3 { font-size: clamp(1.05rem, 0.95rem + 0.6vw, 1.25rem); }
+
+p, li, .small, .muted { font-size: 1rem; }
+.subtitle { font-size: 1.05rem; line-height: 1.65; }
+
+.muted { color: var(--muted); }
+.small { font-size: 0.92rem; }
+
+/* Improve long paragraph readability */
+.hero p, .card p { margin: 0 0 var(--space-4); }
+
+/* ---------- 2) Contrast & surfaces ---------- */
+/* Slightly brighten text, deepen surface borders for clarity */
+:root {
+  --text-strong: #f6f8ff; /* lighter text for dark bg */
+  --border-strong: #2e3a6b;
+}
+
+body { color: var(--text-strong); }
+.card, .day-col, .list .row {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-card);
+}
+
+/* ---------- 3) Header & navigation polish ---------- */
+.app-header {
+  padding: var(--space-3) var(--space-4);
+  backdrop-filter: saturate(150%) blur(6px);
+}
+.brand .title { letter-spacing: 0.4px; font-weight: 800; }
+
+.top-nav {
+  gap: var(--space-2);
+}
+.top-nav button {
+  border-radius: var(--radius-2);
+  padding: 8px 12px;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+.top-nav button[aria-current="page"],
+.top-nav button.active {
+  color: var(--text);
+  border-color: var(--primary);
+  background: linear-gradient(180deg, rgba(106,169,255,0.08), rgba(106,169,255,0.02));
+}
+
+/* Wrap nicely on small screens */
+@media (max-width: 760px) {
+  .top-nav { gap: var(--space-2); }
+  .top-nav button { padding: 6px 10px; }
+}
+
+/* ---------- 4) Buttons ---------- */
+button, .primary, .secondary, .danger {
+  border-radius: var(--radius-2);
+  transition: transform 120ms ease, border-color 160ms ease, background 160ms ease;
+}
+button:hover, .primary:hover, .secondary:hover, .danger:hover { 
+  transform: translateY(-1px);
+}
+button:active, .primary:active, .secondary:active, .danger:active { 
+  transform: translateY(0);
+}
+
+/* Primary button stronger for affordance */
+.primary {
+  background: linear-gradient(180deg, var(--primary), #4b8df5);
+  color: #0b1020;
+  font-weight: 800;
+}
+
+/* Secondary buttons refined (used in tour & other places) */
+.secondary {
+  background: #1b2449;
+  color: var(--text-strong);
+  border: 1px solid var(--border-strong);
+}
+
+/* ---------- 5) Cards, chips, panels ---------- */
+.card, .day-col, .list .row {
+  border-radius: var(--radius-3);
+}
+.card { padding: var(--space-5); }
+.card .label { margin-bottom: var(--space-2); }
+
+.card-chip {
+  border-radius: var(--radius-2);
+  padding: var(--space-3);
+  background: #11183a;
+  border: 1px dashed #33407a;
+}
+
+/* Day columns breathing room */
+.plan-grid { gap: var(--space-4); }
+.day-col { padding: var(--space-4); }
+.day-col h3 { margin-bottom: var(--space-3); }
+
+/* Tasks */
+.task {
+  border-radius: var(--radius-2);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+  background: #0f1633;
+  border: 1px solid #2b3770;
+}
+.task .title { font-weight: 600; }
+.task .meta { gap: var(--space-3); }
+
+/* List items (Today) */
+.list .row {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-2);
+}
+
+/* ---------- 6) Suit badges and domain tags ---------- */
+.suit-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #3a4a8b;
+  font-weight: 600;
+  letter-spacing: 0.15px;
+}
+
+/* Refine colors a touch for readability */
+.suit-spades    { background: rgba(79,100,255,0.22);   color: #ebf1ff; }
+.suit-clubs     { background: rgba(34,197,94,0.20);    color: #eaffe9; }
+.suit-hearts    { background: rgba(239,68,68,0.20);    color: #ffeaea; }
+.suit-diamonds  { background: rgba(245,158,11,0.22);   color: #fff5df; }
+
+/* ---------- 7) Form elements (editors) ---------- */
+.card-editor input[type="text"],
+.card-editor textarea,
+.card-editor input[type="date"],
+.card-editor input[type="number"] {
+  padding: 12px;
+  border-radius: var(--radius-2);
+  border: 1px solid #2e3a6b;
+  background: #0e1533;
+}
+
+/* ---------- 8) Hero & sections ---------- */
+.hero {
+  padding: var(--space-7);
+  border-radius: var(--radius-4);
+}
+.hero h1 { margin-bottom: var(--space-3); }
+.hero .actions { margin-top: var(--space-4); gap: var(--space-3); }
+
+/* ---------- 9) Lists & content spacing ---------- */
+ul { margin: 0 0 var(--space-4) var(--space-5); }
+ul li { margin: var(--space-2) 0; }
+
+/* ---------- 10) Micro-interactions (reduced motion aware) ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .card, .day-col, .list .row { transition: box-shadow 200ms ease, transform 160ms ease; }
+  .card:hover, .day-col:hover, .list .row:hover { 
+    box-shadow: 0 10px 36px rgba(0,0,0,0.22); 
+  }
+}
+
+/* ---------- 11) Accessibility touches ---------- */
+/* Stronger visible focus without overwhelming */
+:focus {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Muted helper text spacing */
+.small, .muted { display: block; margin-top: var(--space-2); }
