@@ -441,6 +441,70 @@
   }
 
   // ---------- Render Weekly Plan (drag/move + Alt-copy + inline edit) ----------
+  
+// ----- Weekly Summary (Option D) -----
+function renderPlanSummary(){
+  const box = document.getElementById('planSummary');
+  if (!box) return;
+
+  const plan = (state.plan && Array.isArray(state.plan.tasks)) ? state.plan : { tasks: [] };
+  const tasks = plan.tasks || [];
+
+  // Totals
+  const totalMins = tasks.reduce((a,b)=> a + (b.duration || 0), 0);
+  const totalHours = Math.round((totalMins/60) * 10) / 10;
+
+  const capHrs = state.settings && state.settings.weeklyCapacityHours ? state.settings.weeklyCapacityHours : 8;
+  const capMins = capHrs * 60;
+  const usagePct = capMins ? Math.round((totalMins / capMins) * 100) : 0;
+
+  // Counts by suit
+  const suitsList = ['spades','clubs','hearts','diamonds'];
+  const counts = { spades:0, clubs:0, hearts:0, diamonds:0 };
+  tasks.forEach(t => { if (counts.hasOwnProperty(t.suit)) counts[t.suit]++; });
+
+  // Usage badge class
+  let usageClass = 'badge-ok';
+  if (usagePct >= 90) usageClass = 'badge-high';
+  else if (usagePct >= 70) usageClass = 'badge-warn';
+
+  // Hint logic
+  const maxCount = Math.max(counts.spades, counts.clubs, counts.hearts, counts.diamonds);
+  const minCount = Math.min(counts.spades, counts.clubs, counts.hearts, counts.diamonds);
+  let hint = 'Looks balanced. Aim for small, meaningful steps.';
+  if (usagePct >= 95) hint = 'This looks heavy—consider reducing durations or moving a card.';
+  else if (usagePct <= 40) hint = 'Plenty of capacity left—consider adding one helpful habit.';
+  else if (maxCount - minCount >= 3) hint = 'One suit dominates—check if that’s intentional this week.';
+
+  // Suit icons
+  const suitIcon = {
+    spades: '♠', clubs: '♣', hearts: '♥', diamonds: '♦'
+  };
+
+  box.innerHTML = `
+    <div class="summary-top">
+      <div class="summary-title">Weekly Summary</div>
+      <div class="summary-stats">
+        <span class="stat"><span class="k">Time:</span> ${totalMins}m (${totalHours}h)</span>
+        <span class="stat"><span class="k">Capacity:</span> ${capHrs}h</span>
+        <span class="stat">
+          <span class="k">Usage:</span> 
+          <span class="badge-usage ${usageClass}">${usagePct}%</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="summary-suits">
+      <span class="suit-pill">${suitIcon.spades} <span class="count">${counts.spades}</span></span>
+      <span class="suit-pill">${suitIcon.clubs} <span class="count">${counts.clubs}</span></span>
+      <span class="suit-pill">${suitIcon.hearts} <span class="count">${counts.hearts}</span></span>
+      <span class="suit-pill">${suitIcon.diamonds} <span class="count">${counts.diamonds}</span></span>
+    </div>
+
+    <div class="summary-hint">${hint}</div>
+  `;
+}
+
   function renderPlan(){
     const root = $('#planGrid');
     if(!root) return;
@@ -469,6 +533,7 @@
     const usage     = Math.round((totalMins/capMins)*100);
     $('#capacityBanner') && ($('#capacityBanner').innerText =
       `Capacity used: ${Math.round(totalMins/60)}h (${usage}%) of ${state.settings.weeklyCapacityHours}h`
+   renderPlanSummary();
     );
 
     // Render columns and tasks
