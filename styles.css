@@ -415,3 +415,134 @@ ul li { margin: var(--space-2) 0; }
 
 /* Muted helper text spacing */
 .small, .muted { display: block; margin-top: var(--space-2); }
+
+/* =========================================================
+   Solvent Deck • Option B+ Visual Toolkit
+   - Typography helpers
+   - Callouts
+   - Sub-section dividers
+   - Alternate card colorway
+   ========================================================= */
+
+/* ---------- A) Typography helpers ---------- */
+/* Use .eyebrow above headings for small, all-caps labels */
+.eyebrow {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12rem;
+  color: var(--muted);
+  display: inline-block;
+  margin-bottom: 6px;
+  opacity: 0.9;
+}
+
+/* Use .kicker when you want a bold line before a title (e.g., section theme) */
+.kicker {
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: var(--text-strong);
+  display: block;
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+}
+
+/* A short leading paragraph under titles */
+.lede {
+  font-size: 1.08rem;
+  line-height: 1.75;
+  color: var(--text-strong);
+  opacity: 0.96;
+  margin: 6px 0 var(--space-4);
+}
+
+/* Small print for disclaimers or helper notes */
+.fine-print {
+  font-size: 0.86rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ---------- B) Callouts (Tip, Info, Warning, Success) ---------- */
+.callout {
+  position: relative;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: var(--space-4);
+  background: #0f1633;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+  margin: var(--space-4) 0;
+}
+.callout .title {
+  font-weight: 700;
+  margin: 0 0 var(--space-2);
+}
+.callout .body { margin: 0; color: var(--text-strong); }
+
+/* Accents by type */
+.callout.tip      { border-color: #2d6a4f; background: rgba(45,106,79,0.12); }
+.callout.info     { border-color: #3b82f6; background: rgba(59,130,246,0.12); }
+.callout.warn     { border-color: #d97706; background: rgba(217,119,6,0.12); }
+.callout.success  { border-color: #22c55e; background: rgba(34,197,94,0.12); }
+
+/* Decorative left rail */
+.callout::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px; border-radius: 12px 0 0 12px;
+  background: linear-gradient(180deg, var(--primary), #4b8df5);
+  opacity: 0.7;
+}
+.callout.tip::before     { background: linear-gradient(180deg, #34d399, #10b981); }
+.callout.info::before    { background: linear-gradient(180deg, #93c5fd, #3b82f6); }
+.callout.warn::before    { background: linear-gradient(180deg, #fcd34d, #f59e0b); }
+.callout.success::before { background: linear-gradient(180deg, #86efac, #22c55e); }
+
+/* ---------- C) Sub-section dividers ---------- */
+/* Use .section-divider between stacked groups for visual separation */
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--border-strong);
+  margin: var(--space-6) 0 var(--space-6);
+  opacity: 0.8;
+}
+
+/* ---------- D) Alternate card colorway ---------- */
+/* Use .card.alt to vary background clusters within a section */
+.card.alt {
+  background: #0f1430;
+  border-color: #31407b;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+
+/* ---------- E) Tiny utility: muted label row & pill cluster ---------- */
+.label-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 4px 0 var(--space-2);
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.pills {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pill {
+  border: 1px solid #33407a;
+  background: #0f1532;
+  color: var(--text-strong);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  letter-spacing: 0.1px;
+}
+
+/* ---------- F) Reduce motion respect for callouts ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .callout { transition: transform 140ms ease, box-shadow 180ms ease; }
+  .callout:hover { transform: translateY(-1px); box-shadow: 0 10px 36px rgba(0,0,0,0.22); }
+}
