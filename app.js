@@ -533,9 +533,8 @@ function renderPlanSummary(){
     const usage     = Math.round((totalMins/capMins)*100);
     $('#capacityBanner') && ($('#capacityBanner').innerText =
       `Capacity used: ${Math.round(totalMins/60)}h (${usage}%) of ${state.settings.weeklyCapacityHours}h`
-   renderPlanSummary();
-    );
-
+      );
+ renderPlanSummary();
     // Render columns and tasks
     const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
     perDay.forEach((d, i) => {
