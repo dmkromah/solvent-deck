@@ -5,6 +5,38 @@
   const $  = (sel, root=document) => root.querySelector(sel);
   const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 
+// ---- Empty deck message helpers ----
+function showEmptyDeckMessage(show){
+  const box = document.getElementById('drawEmptyMsg');
+  if (!box) return;
+  box.style.display = show ? 'block' : 'none';
+}
+
+function wireEmptyDeckActions(){
+  const btnExample = document.getElementById('emptyLoadExample');
+  const btnAces    = document.getElementById('emptyGotoAces');
+
+  // Load example deck, then come back to Draw
+  if (btnExample) btnExample.addEventListener('click', ()=>{
+    try {
+      if (typeof seedExample === 'function') {
+        seedExample();
+        alert('Example deck loaded. You can now draw your cards.');
+        showSection('draw');
+      }
+    } catch(e) {
+      console.error('[EmptyDeck] seedExample error:', e);
+      alert('Could not load the example deck. Please refresh and try again.');
+    }
+  });
+
+  // Jump to Aces to start building
+  if (btnAces) btnAces.addEventListener('click', ()=> showSection('aces'));
+}
+
+// Call this once on startup (safe if elements are not yet in DOM)
+wireEmptyDeckActions();
+
   // ---------- Local-time date helpers (no UTC drift) ----------
   const pad2 = n => (n < 10 ? '0' + n : '' + n);
 
@@ -321,38 +353,65 @@
   }
 
   // ---------- Weekly Draw ----------
-  function drawWeekly(){
-    buildDeck();
-    const countSel    = $('#drawCount');
-    const perDomainEl = $('#minPerDomain');
-    const count = countSel ? parseInt(countSel.value,10) : 4;
-    const ensureBalance = perDomainEl ? perDomainEl.checked : true;
+  
+function drawWeekly(){
+  buildDeck();
 
-    const pool = state.deck.filter(c => c.rank!=='A'); // exclude Aces from weekly draw
-    const bySuit = { spades:[], clubs:[], hearts:[], diamonds:[] };
-    pool.forEach(c => bySuit[c.suit].push(c));
+  // Read controls
+  const countSel = $('#drawCount');
+  const perDomain = $('#minPerDomain');
+  const count = countSel ? parseInt(countSel.value,10) : 4;
+  const ensureBalance = perDomain ? perDomain.checked : true;
 
-    const selected = [];
-    if(ensureBalance){
-      suits.forEach(s => {
-        if(bySuit[s].length>0 && selected.length<count){
-          selected.push(bySuit[s][Math.floor(Math.random()*bySuit[s].length)]);
-        }
-      });
-    }
-    while(selected.length < count && pool.length>0){
-      const c = pool.splice(Math.floor(Math.random()*pool.length), 1)[0];
-      if(!selected.find(x=>x.id===c.id)) selected.push(c);
-    }
+  // Build the pool (exclude Aces from random weekly draw)
+  const pool = (state.deck || []).filter(c => c && c.rank !== 'A');
 
-    const weekStartDate = startOfWeek(new Date());
-    state.draw = { weekStart: fmtLocalDate(weekStartDate), selected: selected.map(c=>c.id) };
-    save();
-    renderDraw();
+  // If there's nothing to draw from, show the helper message and bail early
+  if (!pool.length) {
+    showEmptyDeckMessage(true);
+    // Also clear any previous selection rendering
+    const root = $('#drawResult');
+    if (root) root.innerHTML = '<div class="muted">No cards yet. Load the example deck or add cards in Aces / Strategics / Habits.</div>';
+    return;
   }
 
-  function renderDraw(){
-    buildDeck();
+  // Hide message if previously shown
+  showEmptyDeckMessage(false);
+
+  // Balance helper
+  const bySuit = { spades:[], clubs:[], hearts:[], diamonds:[] };
+  pool.forEach(c => { if (bySuit[c.suit]) bySuit[c.suit].push(c); });
+
+  // Selection
+  const selected = [];
+  if (ensureBalance){
+    ['spades','clubs','hearts','diamonds'].forEach(s => {
+      if (bySuit[s].length > 0 && selected.length < count){
+        selected.push(bySuit[s][Math.floor(Math.random()*bySuit[s].length)]);
+      }
+    });
+  }
+  while (selected.length < count && pool.length > 0){
+    const c = pool.splice(Math.floor(Math.random()*pool.length), 1)[0];
+    if (!selected.find(x => x.id === c.id)) selected.push(c);
+  }
+
+  // Save selection + week
+  const weekStartDate = startOfWeek(new Date());
+  state.draw = { weekStart: fmtLocalDate(weekStartDate), selected: selected.map(c=>c.id) };
+  save();
+
+  renderDraw();
+}
+
+
+  
+function renderDraw(){
+  buildDeck();
+  // Hide empty message if pool is not empty anymore
+  const poolNow = (state.deck || []).filter(c => c && c.rank !== 'A');
+  showEmptyDeckMessage(poolNow.length === 0);
+
     const root = $('#drawResult');
     if(!root) return;
     root.innerHTML = '';
