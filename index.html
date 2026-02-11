@@ -267,6 +267,17 @@
         </label>
         <button class="primary" id="drawBtn">🎴 Draw my cards</button>
       </div>
+      <!-- Empty-deck message (shown only when no cards are available to draw) -->
+<div id="drawEmptyMsg" class="callout info" style="display:none; margin-bottom: 16px;">
+  <div class="title">No cards to draw from yet</div>
+  <p class="body" style="margin-bottom: 10px;">
+    You haven’t built your deck yet. Add some Aces / Strategics / Habits, or load the Example Deck to get started.
+  </p>
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <button id="emptyLoadExample" class="primary">Load Example Deck</button>
+    <button id="emptyGotoAces" class="secondary">Go to Aces</button>
+  </div>
+</div>
       <div id="drawResult" class="grid grid-4" aria-live="polite"></div>
       <div class="actions">
         <button class="primary" id="genPlanBtn">Generate Weekly Plan</button>
