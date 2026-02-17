@@ -1421,3 +1421,120 @@ function renderPlanSummary(){
     initDeleteSystem();
   }
 })();
+
+/* ===== Auto-Attach Delete Buttons (No-Template Mode) ===== */
+(function () {
+  'use strict';
+
+  // Identify probable task and card rows by common class names.
+  // If your classes differ, add them here.
+  const TASK_ROW_SELECTORS = [
+    '.task-row',
+    '.task',
+    '[data-task-id]'
+  ];
+
+  const CARD_SELECTORS = [
+    '.card',
+    '.deck-card',
+    '.card-header',
+    '[data-card-id]'
+  ];
+
+  function findFirst(el, selectors) {
+    for (const sel of selectors) {
+      const found = el.querySelectorAll(sel);
+      if (found && found.length) return Array.from(found);
+    }
+    return [];
+  }
+
+  // Inject task delete button if missing
+  function ensureTaskButtons(root = document) {
+    const rows = [];
+    TASK_ROW_SELECTORS.forEach(sel => {
+      root.querySelectorAll(sel).forEach(el => rows.push(el));
+    });
+
+    rows.forEach(row => {
+      // deduce id from data attribute or nested
+      const taskId =
+        row.dataset?.taskId ||
+        row.getAttribute?.('data-task-id') ||
+        (row.closest('[data-task-id]')?.dataset?.taskId);
+
+      if (!taskId) return; // cannot wire without id
+
+      const hasButton = row.querySelector('.btn-delete-task');
+      if (hasButton) return;
+
+      const btn = document.createElement('button');
+      btn.className = 'btn-delete-task';
+      btn.title = 'Delete task';
+      btn.setAttribute('aria-label', `Delete task ${taskId}`);
+      btn.dataset.taskId = taskId;
+      btn.textContent = '✖';
+
+      // Prefer appending at the end; adjust to your layout as needed
+      row.appendChild(btn);
+
+      // Animate affordance briefly (optional)
+      btn.style.transform = 'scale(0.98)';
+      setTimeout(() => { btn.style.transform = 'scale(1)'; }, 80);
+    });
+  }
+
+  // Inject card delete button in header if missing
+  function ensureCardButtons(root = document) {
+    const cards = [];
+    CARD_SELECTORS.forEach(sel => {
+      root.querySelectorAll(sel).forEach(el => cards.push(el));
+    });
+
+    cards.forEach(cardEl => {
+      // Determine the card wrapper and header
+      const wrapper = cardEl.closest('[data-card-id]') || cardEl;
+      const cardId =
+        wrapper?.dataset?.cardId ||
+        wrapper?.getAttribute?.('data-card-id');
+
+      if (!cardId) return;
+
+      // Find header area; fallback to the wrapper
+      const header = wrapper.querySelector('.card-header') || cardEl;
+
+      // Avoid duplicates
+      if (header.querySelector('.btn-delete-card')) return;
+
+      const btn = document.createElement('button');
+      btn.className = 'btn-delete-card';
+      btn.title = 'Delete card';
+      btn.setAttribute('aria-label', `Delete card ${cardId}`);
+      btn.dataset.cardId = cardId;
+      btn.textContent = 'Delete';
+
+      // Append to header (after title)
+      header.appendChild(btn);
+    });
+  }
+
+  // Re-run after each render via MutationObserver
+  const mo = new MutationObserver((mutations) => {
+    // If a lot changed, just rescan
+    ensureTaskButtons(document);
+    ensureCardButtons(document);
+  });
+
+  function startAutoAttach() {
+    ensureTaskButtons(document);
+    ensureCardButtons(document);
+    mo.observe(document.body, { childList: true, subtree: true });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startAutoAttach);
+  } else {
+    startAutoAttach();
+  }
+})();
+``
