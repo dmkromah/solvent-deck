@@ -1,86 +1,42 @@
+ <!-- Script -->
+  <script src="app.js"></script>
+  
+<!-- Solvent Delete: Confirmation Modal -->
+<div id="sd-delete-backdrop" class="sd-modal-backdrop" aria-hidden="true"></div>
+<div
+  id="sd-delete-modal"
+  class="sd-modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="sd-delete-title"
+  aria-describedby="sd-delete-desc"
+  hidden
+>
+  <div class="sd-modal__card">
+    <h3 id="sd-delete-title" class="sd-modal__title">Delete item?</h3>
+    <p id="sd-delete-desc" class="sd-modal__desc">
+      This action will remove the selected item. You can undo afterwards.
+    </p>
 
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Solvent Deck – Prototype</title>
-
-  <!-- Correct stylesheet tag -->
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <header class="sd-header">
-    <div class="sd-header__content">
-      <h1 class="sd-brand">Solvent Deck</h1>
-      <p class="sd-sub">A calm, minimal prototype (Option B+ aesthetic)</p>
+    <div id="sd-associated-toggle" class="sd-associated" hidden>
+      <label class="sd-checkbox">
+        <input id="sd-delete-associated" type="checkbox" checked />
+        <span>Also remove associated tasks in this card</span>
+      </label>
+      <div id="sd-associated-count" class="sd-associated__meta"></div>
     </div>
-  </header>
 
-  <main class="sd-main">
-    <!-- Cards / Deck -->
-    <section class="sd-section">
-      <div class="sd-section__head">
-        <h2 class="sd-h2">Deck</h2>
-      </div>
-      <div id="cards" class="card-grid" aria-live="polite"></div>
-    </section>
-
-    <!-- Weekly Plan -->
-    <section class="sd-section">
-      <div class="sd-section__head">
-        <h2 class="sd-h2">Weekly Plan</h2>
-      </div>
-      <ul id="weekly-plan" class="weekly-list" aria-live="polite"></ul>
-      <p id="weekly-empty" class="sd-empty" hidden>Nothing planned yet.</p>
-    </section>
-  </main>
-
-  <!-- Footer -->
-  <footer class="sd-footer">
-    <small>© Solvent LifeStyle Prototype</small>
-  </footer>
-
-  <!-- ==================== Delete System: Modal + Toast ==================== -->
-  <!-- Backdrop -->
-  <div id="sd-delete-backdrop" class="sd-modal-backdrop" aria-hidden="true"></div>
-
-  <!-- Modal -->
-  <div
-    id="sd-delete-modal"
-    class="sd-modal"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="sd-delete-title"
-    aria-describedby="sd-delete-desc"
-    hidden
-  >
-    <div class="sd-modal__card">
-      <h3 id="sd-delete-title" class="sd-modal__title">Delete item?</h3>
-      <p id="sd-delete-desc" class="sd-modal__desc">
-        This action will remove the selected item. You can undo afterwards.
-      </p>
-
-      <!-- Shown only for card delete -->
-      <div id="sd-associated-toggle" class="sd-associated" hidden>
-        <label class="sd-checkbox">
-          <input id="sd-delete-associated" type="checkbox" checked />
-          <span>Also remove associated tasks in this card</span>
-        </label>
-        <div id="sd-associated-count" class="sd-associated__meta"></div>
-      </div>
-
-      <div class="sd-modal__actions">
-        <button id="sd-cancel" class="sd-btn sd-btn--ghost">Cancel</button>
-        <button id="sd-confirm" class="sd-btn sd-btn--danger">Delete</button>
-      </div>
-   / Undo -->
-  <div id="sd-toast" class="sd-toast" role="status" aria-live="polite" hidden>
-    <span id="sd-toast-msg">Deleted.</span>
-    <button id="sd-toast-undo" class="sd-link">Undo</button>
+    <div class="sd-modal__actions">
+      <button id="sd-cancel" class="sd-btn sd-btn--ghost">Cancel</button>
+      <button id="sd-confirm" class="sd-btn sd-btn--danger">Delete</button>
+    </div>
   </div>
+</div>
 
-  <!-- Correct script tag -->
-  app.js</script>
+<!-- Solvent Delete: Toast (Undo) -->
+<div id="sd-toast" class="sd-toast" role="status" aria-live="polite" hidden>
+  <span id="sd-toast-msg">Deleted.</span>
+  <button id="sd-toast-undo" class="sd-link">Undo</button>
+</div>
 </body>
 </html>
