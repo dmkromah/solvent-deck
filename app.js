@@ -1494,4 +1494,45 @@ function renderPlanSummary(){
   }
 })();
 
+// TEMP: ultra-simple attach targeting common classes; adjust as needed.
+(function () {
+  const taskRowSelectors = ['.task-row', '.task', '.list-item'];
+  const cardSelectors = ['.card', '.deck-card'];
+
+  function attachTemp() {
+    // tasks
+    document.querySelectorAll(taskRowSelectors.join(',')).forEach((row, i) => {
+      if (!row.querySelector('.btn-delete-task')) {
+        const btn = document.createElement('button');
+        btn.className = 'btn-delete-task';
+        btn.title = 'Delete task';
+        btn.textContent = '✖';
+        // store a synthetic id if none exists
+        if (!row.getAttribute('data-task-id')) row.setAttribute('data-task-id', `synthetic-${i}`);
+        btn.dataset.taskId = row.getAttribute('data-task-id');
+        row.appendChild(btn);
+      }
+    });
+    // cards
+    document.querySelectorAll(cardSelectors.join(',')).forEach((card, i) => {
+      const header = card.querySelector('.card-header') || card;
+      if (!header.querySelector('.btn-delete-card')) {
+        const btn = document.createElement('button');
+        btn.className = 'btn-delete-card';
+        btn.title = 'Delete card';
+        btn.textContent = 'Delete';
+        if (!card.getAttribute('data-card-id')) card.setAttribute('data-card-id', `card-${i}`);
+        btn.dataset.cardId = card.getAttribute('data-card-id');
+        header.appendChild(btn);
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachTemp);
+  } else {
+    attachTemp();
+  }
+})();
+
 
