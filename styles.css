@@ -813,3 +813,22 @@ ul li { margin: var(--space-2) 0; }
   background: var(--sd-danger-quiet);
   color: var(--sd-danger);
 }
+
+/* TEMP: ensure weekly rows can show a small button in the corner */
+.weekly-task, .plan-task, .task-row, .task, li {
+  position: relative;
+}
+
+.btn-delete-task {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  /* keep Option B+ tone */
+  background: transparent;
+  border: none;
+  color: #c9c9c9;
+}
+.btn-delete-task:hover {
+  background: var(--sd-danger-quiet, #ffe5e5);
+  color: var(--sd-danger, #d11a1a);
+}
