@@ -622,3 +622,194 @@ ul li { margin: var(--space-2) 0; }
   .summary-top { gap: 8px; }
   .summary-stats { gap: 8px; }
 }
+
+/* ===== Solvent Delete System (Option B+) ===== */
+:root {
+  --sd-text: #222;
+  --sd-muted: #888;
+  --sd-border: #e6e6e6;
+  --sd-bg: #fff;
+  --sd-soft: #f7f7f7;
+
+  --sd-danger: #d11a1a;
+  --sd-danger-quiet: #ffe5e5;
+  --sd-danger-text: #a10f0f;
+
+  --sd-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+
+/* Delete buttons */
+.btn-delete-task,
+.btn-delete-card,
+.task-delete-btn { /* backward-compat for your earlier snippet */
+  background: transparent;
+  border: none;
+  color: #c9c9c9;
+  font-size: 14px;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.05s ease;
+  line-height: 1;
+}
+.btn-delete-task:hover,
+.btn-delete-card:hover,
+.task-delete-btn:hover {
+  background: var(--sd-danger-quiet);
+  color: var(--sd-danger);
+}
+.btn-delete-card {
+  font-weight: 600;
+  color: var(--sd-muted);
+  border: 1px solid var(--sd-border);
+  background: var(--sd-bg);
+}
+.btn-delete-card:hover {
+  border-color: #f3c4c4;
+}
+
+/* Modal */
+.sd-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(34,34,34,0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+.sd-modal-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.sd-modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 1001;
+}
+.sd-modal[hidden] { display: none; }
+.sd-modal__card {
+  width: 100%;
+  max-width: 460px;
+  background: var(--sd-bg);
+  border: 1px solid var(--sd-border);
+  border-radius: 12px;
+  box-shadow: var(--sd-shadow);
+  padding: 18px 18px 14px;
+  transform: translateY(8px);
+  opacity: 0;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+.sd-modal.is-open .sd-modal__card {
+  transform: translateY(0);
+  opacity: 1;
+}
+.sd-modal__title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: var(--sd-text);
+}
+.sd-modal__desc {
+  margin: 0 0 12px;
+  color: var(--sd-muted);
+  font-size: 14px;
+}
+.sd-associated {
+  background: var(--sd-soft);
+  border: 1px dashed var(--sd-border);
+  border-radius: 10px;
+  padding: 10px;
+  margin: 0 0 12px;
+}
+.sd-associated__meta {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--sd-muted);
+}
+.sd-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--sd-text);
+}
+
+/* Buttons */
+.sd-btn {
+  border: 1px solid var(--sd-border);
+  background: var(--sd-bg);
+  color: var(--sd-text);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  min-width: 84px;
+  transition: background 0.2s ease, border 0.2s ease, color 0.2s ease;
+}
+.sd-btn--ghost:hover { background: var(--sd-soft); }
+.sd-btn--danger {
+  border-color: #f3c4c4;
+  color: var(--sd-danger-text);
+  background: var(--sd-danger-quiet);
+}
+.sd-btn--danger:hover {
+  background: #ffd6d6;
+  border-color: #f2adad;
+}
+.sd-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Toast */
+.sd-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%) translateY(10px);
+  background: var(--sd-bg);
+  border: 1px solid var(--sd-border);
+  border-radius: 10px;
+  box-shadow: var(--sd-shadow);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--sd-text);
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 1002;
+}
+.sd-toast.is-open {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.sd-link {
+  border: none;
+  background: transparent;
+  color: var(--sd-danger);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Row animations (delete) */
+.sd-fade-out {
+  animation: sdFadeOut 140ms ease forwards;
+}
+@keyframes sdFadeOut {
+  to { opacity: 0; }
+}
+.sd-collapse {
+  overflow: hidden;
+  transition: height 160ms ease, margin 160ms ease, padding 160ms ease;
+}
+
+/* (Optional) swipe affordance hook */
+.task-row.swipe-open .btn-delete-task {
+  background: var(--sd-danger-quiet);
+  color: var(--sd-danger);
+}
