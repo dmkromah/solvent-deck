@@ -1514,3 +1514,136 @@ function renderPlanSummary(){
   }
 })();
 
+/* ===== Solvent Delete: Stable Attach v3 (single, safe, weekly-aware) ===== */
+(function () {
+  'use strict';
+  // Prevent duplicate installs (e.g., if app.js is accidentally included twice)
+  if (window.__SD_ATTACH_V3__) return;
+  window.__SD_ATTACH_V3__ = true;
+
+  const WRAPPED = new Set();
+  let weeklyRoot = null;
+  let attachQueued = false;
+
+  function wrapOnce(name) {
+    const fn = window[name];
+    if (typeof fn !== 'function' || WRAPPED.has(name)) return;
+    WRAPPED.add(name);
+    window[name] = function wrapped() {
+      const result = fn.apply(this, arguments);
+      queueAttach();
+      return result;
+    };
+  }
+
+  function queueAttach() {
+    if (attachQueued) return;
+    attachQueued = true;
+    requestAnimationFrame(() => {
+      attachQueued = false;
+      attach();
+    });
+  }
+
+  function findWeeklyRoot() {
+    // Reuse cached container if still in the DOM
+    if (weeklyRoot && document.body.contains(weeklyRoot)) return weeklyRoot;
+
+    // Find a heading that says "Weekly Plan"
+    const h = [...document.querySelectorAll('h1,h2,h3,h4')]
+      .find(el => /weekly\s*plan/i.test(el.textContent || ''));
+    if (!h) return null;
+
+    // Look at the next few siblings for the list container
+    let root = h.nextElementSibling;
+    let tries = 0;
+    while (root && tries++ < 3 &&
+           !root.querySelector('li,[data-task-id],.weekly-task,.plan-task,.task-row,.task,[role="listitem"]')) {
+      root = root.nextElementSibling;
+    }
+    // Fallback: use the heading's parent
+    weeklyRoot = root || h.parentElement || document;
+    return weeklyRoot;
+  }
+
+  function attachTaskButtons(scope) {
+    const rows = scope.querySelectorAll(
+      '[data-task-id], .weekly-task, .plan-task, .task-row, .task, li, [role="listitem"]'
+    );
+
+    rows.forEach((row, i) => {
+      // Skip container lists
+      const tag = row.tagName;
+      if (tag === 'UL' || tag === 'OL') return;
+
+      // Avoid duplicates
+      if (row.querySelector('.btn-delete-task')) return;
+
+      // Ensure ID
+      const id =
+        row.getAttribute('data-task-id') ||
+        row.getAttribute('data-id') ||
+        row.id ||
+        `w-${i}`;
+
+      row.setAttribute('data-task-id', id);
+
+      const btn = document.createElement('button');
+      btn.className = 'btn-delete-task';
+      btn.title = 'Delete task';
+      btn.setAttribute('aria-label', `Delete task ${id}`);
+      btn.dataset.taskId = id;
+      btn.textContent = '✖';
+      row.appendChild(btn);
+    });
+  }
+
+  function attachCardButtons(scope) {
+    const cards = scope.querySelectorAll('[data-card-id], .deck-card, .card');
+    cards.forEach((card, i) => {
+      const header = card.querySelector('.card-header') || card;
+      if (header.querySelector('.btn-delete-card')) return;
+
+      let id = card.getAttribute('data-card-id') ||
+               card.getAttribute('data-id') ||
+               card.id ||
+               `card-${i}`;
+      card.setAttribute('data-card-id', id);
+
+      const btn = document.createElement('button');
+      btn.className = 'btn-delete-card';
+      btn.title = 'Delete card';
+      btn.setAttribute('aria-label', `Delete card ${id}`);
+      btn.dataset.cardId = id;
+      btn.textContent = 'Delete';
+      header.appendChild(btn);
+    });
+  }
+
+  function attach() {
+    // 1) Weekly Plan scope (tight and cheap)
+    const weekly = findWeeklyRoot();
+    if (weekly) attachTaskButtons(weekly);
+
+    // 2) Cards (outside weekly)
+    attachCardButtons(document);
+  }
+
+  function init() {
+    // First pass
+    attach();
+
+    // Re-attach after renders (only wrap once)
+    wrapOnce('renderPlan');   // weekly plan likely renders here
+    wrapOnce('renderTasks');
+    wrapOnce('renderDeck');
+    wrapOnce('renderCards');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
