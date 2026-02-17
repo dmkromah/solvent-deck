@@ -383,5 +383,43 @@
 
   <!-- Script -->
   <script src="app.js"></script>
+  
+<!-- Solvent Delete: Confirmation Modal -->
+<div id="sd-delete-backdrop" class="sd-modal-backdrop" aria-hidden="true"></div>
+<div
+  id="sd-delete-modal"
+  class="sd-modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="sd-delete-title"
+  aria-describedby="sd-delete-desc"
+  hidden
+>
+  <div class="sd-modal__card">
+    <h3 id="sd-delete-title" class="sd-modal__title">Delete item?</h3>
+    <p id="sd-delete-desc" class="sd-modal__desc">
+      This action will remove the selected item. You can undo afterwards.
+    </p>
+
+    <div id="sd-associated-toggle" class="sd-associated" hidden>
+      <label class="sd-checkbox">
+        <input id="sd-delete-associated" type="checkbox" checked />
+        <span>Also remove associated tasks in this card</span>
+      </label>
+      <div id="sd-associated-count" class="sd-associated__meta"></div>
+    </div>
+
+    <div class="sd-modal__actions">
+      <button id="sd-cancel" class="sd-btn sd-btn--ghost">Cancel</button>
+      <button id="sd-confirm" class="sd-btn sd-btn--danger">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Solvent Delete: Toast (Undo) -->
+<div id="sd-toast" class="sd-toast" role="status" aria-live="polite" hidden>
+  <span id="sd-toast-msg">Deleted.</span>
+  <button id="sd-toast-undo" class="sd-link">Undo</button>
+</div>
 </body>
 </html>
