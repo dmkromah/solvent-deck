@@ -1422,11 +1422,6 @@ function renderPlanSummary(){
   }
 })();
 
-
-
-
-})();
-
   // Adds a delete button to any card header inside a [data-card-id] card
   function attachCardButtons(root = document) {
     root.querySelectorAll('[data-card-id]').forEach(card => {
