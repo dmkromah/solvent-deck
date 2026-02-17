@@ -1621,4 +1621,97 @@ function renderPlanSummary(){
   }
 })();
 
+/* ===== Solvent Delete: Weekly Plan Task Attach (text-anchored, lightweight) ===== */
+(function () {
+  'use strict';
+
+  // Find the section under the heading that says "Weekly Plan" (case-insensitive)
+  function findWeeklyRoot() {
+    const headings = Array.from(document.querySelectorAll('h1,h2,h3,h4'))
+      .filter(h => /weekly\s*plan/i.test(h.textContent || ''));
+    if (!headings.length) return null;
+
+    const h = headings[0];
+
+    // Try the next few siblings for a container that actually holds tasks
+    let root = h.nextElementSibling;
+    for (let i = 0; i < 4 && root; i++) {
+      if (root.querySelector('li, .weekly-task, .plan-task, .task-row, .task, [role="listitem"]')) break;
+      root = root.nextElementSibling;
+    }
+
+    // Fall back: climb up to parent and search downward
+    if (!root) {
+      let cur = h.parentElement;
+      for (let i = 0; i < 4 && cur; i++) {
+        if (cur.querySelector('li, .weekly-task, .plan-task, .task-row, .task, [role="listitem"]')) {
+          root = cur;
+          break;
+        }
+        cur = cur.parentElement;
+      }
+    }
+
+    return root || null;
+  }
+
+  function attachWeeklyTaskButtons() {
+    const root = findWeeklyRoot();
+    if (!root) return;
+
+    // Candidate rows inside weekly plan; you can add/remove selectors if needed
+    const rows = root.querySelectorAll('li, .weekly-task, .plan-task, .task-row, .task, [role="listitem"]');
+
+    rows.forEach((row, i) => {
+      // Avoid attaching to UL/OL wrappers
+      if (row.tagName === 'UL' || row.tagName === 'OL') return;
+
+      // Skip if a delete button already exists
+      if (row.querySelector('.btn-delete-task')) return;
+
+      // Ensure we have an ID we can pass to the delete logic
+      let taskId =
+        row.getAttribute('data-task-id') ||
+        row.getAttribute('data-id') ||
+        row.id ||
+        `weekly-${i}`;
+
+      // Store it so the Delete System can target it
+      row.setAttribute('data-task-id', taskId);
+
+      // Add the button
+      const btn = document.createElement('button');
+      btn.className = 'btn-delete-task';
+      btn.title = 'Delete task';
+      btn.setAttribute('aria-label', `Delete task ${taskId}`);
+      btn.dataset.taskId = taskId;
+      btn.textContent = '✖';
+      row.appendChild(btn);
+    });
+  }
+
+  // Re-run after your weekly plan renderer, if it exists
+  function wrapIfExists(name) {
+    const fn = window[name];
+    if (typeof fn !== 'function') return;
+    window[name] = function wrappedRender() {
+      const result = fn.apply(this, arguments);
+      setTimeout(attachWeeklyTaskButtons, 0);
+      return result;
+    };
+  }
+
+  function init() {
+    attachWeeklyTaskButtons();
+    wrapIfExists('renderPlan');   // likely the Weekly Plan renderer
+    wrapIfExists('renderTasks');  // in case tasks render here
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
 
