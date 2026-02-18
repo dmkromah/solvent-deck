@@ -525,6 +525,57 @@ function renderDraw(){
 
     state.plan = { weekStart, tasks };
     save();
+    
+// ----- Weekly Draw renderer (known-good) -----
+function renderDraw(){
+  // (Re)build deck so UI reflects latest Aces/Strategics/Habits
+  if (typeof buildDeck === 'function') buildDeck();
+
+  const root = document.querySelector('#drawResult');
+  if (!root) return;
+
+  root.innerHTML = '';
+
+  // Selected IDs (if any)
+  const selectedIds =
+    (state && state.draw && Array.isArray(state.draw.selected))
+      ? state.draw.selected
+      : [];
+
+  // Whole deck (if any)
+  const deck =
+    (state && Array.isArray(state.deck))
+      ? state.deck
+      : [];
+
+  // If nothing drawn yet, show a friendly hint and (optionally) the empty-deck helper visibility
+  if (!selectedIds.length) {
+    // If you installed the empty-deck callout earlier, keep it in sync:
+    const poolNow = deck.filter(c => c && c.rank !== 'A');
+    if (typeof showEmptyDeckMessage === 'function') {
+      showEmptyDeckMessage(poolNow.length === 0);
+    }
+    root.innerHTML = '<div class="muted">No cards selected yet. Click "Draw my cards".</div>';
+    return;
+  }
+
+  // Render selected cards
+  const selected = deck.filter(c => selectedIds.includes(c.id));
+  const renderCard = (c) => `
+    <div class="card">
+      <div class="meta">
+        <span class="suit-badge ${suitMeta[c.suit].color}">
+          ${suitMeta[c.suit].icon} ${c.rank}
+        </span>
+      </div>
+      <div class="title">${c.title}</div>
+    </div>`;
+
+  root.innerHTML = selected.length
+    ? selected.map(renderCard).join('')
+    : '<div class="muted">No cards selected yet. Click "Draw my cards".</div>';
+}
+
     renderPlan();
   }
 
