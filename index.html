@@ -234,55 +234,67 @@
       <div class="actions"><button class="primary" data-goto="draw">Save Habits & Go to Draw</button></div>
     </section>
 
-    <!-- Weekly Draw -->
-    <section id="draw" class="section" aria-labelledby="draw-h2">
-      <h2 id="draw-h2">Weekly Draw</h2>
-      <p class="small muted">Hint: Keep “min 1 per domain” on for a balanced week.</p>
-      <div class="controls">
-        <div class="card alt" style="margin-bottom: 16px;">
-  <span class="kicker">Weekly Draw</span>
-  <h2>Pick your focus</h2>
-  <p class="lede">
-    Draw 3–5 cards. Keep it achievable. You can always refine after you see the plan.
-  </p>
+  
+<!-- Weekly Draw -->
+<section id="draw" class="section" aria-labelledby="draw-h2">
+  <h2 id="draw-h2">Weekly Draw</h2>
+  <p class="small muted">Hint: Keep “min 1 per domain” on for a balanced week.</p>
 
-  <div class="label-row">
-    Emphasis this week:
-    <span class="pills">
-      <span class="pill">♠ Career</span>
-      <span class="pill">♣ Health</span>
-      <span class="pill">♥ Relationships</span>
-      <span class="pill">♦ Finances</span>
-    </span>
+  <!-- Move this OUTSIDE the controls block -->
+  <div class="card alt" style="margin-bottom: 16px;">
+    <span class="kicker">Weekly Draw</span>
+    <h2>Pick your focus</h2>
+    <p class="lede">
+      Draw 3–5 cards. Keep it achievable. You can always refine after you see the plan.
+    </p>
+
+    <div class="label-row">
+      Emphasis this week:
+      <span class="pills">
+        <span class="pill">♠ Career</span>
+        <span class="pill">♣ Health</span>
+        <span class="pill">♥ Relationships</span>
+        <span class="pill">♦ Finances</span>
+      </span>
+    </div>
+
+    <div class="callout info">
+      <div class="title">Heads‑up</div>
+      <p class="body">You can re‑draw if it looks too heavy or too light. The goal is a solvent week, not a perfect one.</p>
+    </div>
   </div>
 
-  <div class="callout info">
-    <div class="title">Heads‑up</div>
-    <p class="body">You can re‑draw if it looks too heavy or too light. The goal is a solvent week, not a perfect one.</p>
+  <!-- Controls must remain clean -->
+  <div class="controls">
+    <label><input type="checkbox" id="minPerDomain" checked> Ensure at least 1 per domain</label>
+    <label>Number of cards:
+      <select id="drawCount">
+        <option>3</option>
+        <option selected>4</option>
+        <option>5</option>
+      </select>
+    </label>
+    <button class="primary" id="drawBtn">🎴 Draw my cards</button>
   </div>
-</div>
-        <label><input type="checkbox" id="minPerDomain" checked> Ensure at least 1 per domain</label>
-        <label>Number of cards:
-          <select id="drawCount"><option>3</option><option selected>4</option><option>5</option></select>
-        </label>
-        <button class="primary" id="drawBtn">🎴 Draw my cards</button>
-      </div>
-      <!-- Empty-deck message (shown only when no cards are available to draw) -->
-<div id="drawEmptyMsg" class="callout info" style="display:none; margin-bottom: 16px;">
-  <div class="title">No cards to draw from yet</div>
-  <p class="body" style="margin-bottom: 10px;">
-    You haven’t built your deck yet. Add some Aces / Strategics / Habits, or load the Example Deck to get started.
-  </p>
-  <div style="display:flex; gap:8px; flex-wrap:wrap;">
-    <button id="emptyLoadExample" class="primary">Load Example Deck</button>
-    <button id="emptyGotoAces" class="secondary">Go to Aces</button>
+
+  <!-- Empty-deck message -->
+  <div id="drawEmptyMsg" class="callout info" style="display:none; margin-bottom: 16px;">
+    <div class="title">No cards to draw from yet</div>
+    <p class="body" style="margin-bottom: 10px;">
+      You haven’t built your deck yet. Add some Aces / Strategics / Habits, or load the Example Deck to get started.
+    </p>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button id="emptyLoadExample" class="primary">Load Example Deck</button>
+      <button id="emptyGotoAces" class="secondary">Go to Aces</button>
+    </div>
   </div>
-</div>
-      <div id="drawResult" class="grid grid-4" aria-live="polite"></div>
-      <div class="actions">
-        <button class="primary" id="genPlanBtn">Generate Weekly Plan</button>
-      </div>
-    </section>
+
+  <div id="drawResult" class="grid grid-4" aria-live="polite"></div>
+
+  <div class="actions">
+    <button class="primary" id="genPlanBtn">Generate Weekly Plan</button>
+  </div>
+</section>
 
     <!-- Weekly Plan -->
     <section id="plan" class="section" aria-labelledby="plan-h2">
