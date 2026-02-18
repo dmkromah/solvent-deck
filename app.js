@@ -1063,4 +1063,4 @@ function renderPlanSummary(){
 
   // ---------- First render ----------
   showSection('welcome');
-})();
+});
