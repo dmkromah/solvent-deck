@@ -1,13 +1,13 @@
 
 (function(){
-  // ---------- Utility ----------
-  const $ = (sel, root=document) => root.querySelector(sel);
+  // ---------- Tiny DOM helpers ----------
+  const $  = (sel, root=document) => root.querySelector(sel);
   const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 
-  // ---- Local-only date helpers (no UTC drift) ----
+  // ---------- Local-time date helpers (no UTC drift) ----------
   const pad2 = n => (n < 10 ? '0' + n : '' + n);
 
-  // Return YYYY-MM-DD in local time
+  // Format Date -> "YYYY-MM-DD" in *local* time
   const fmtLocalDate = (dateObj) => {
     const y = dateObj.getFullYear();
     const m = pad2(dateObj.getMonth() + 1);
@@ -15,18 +15,18 @@
     return `${y}-${m}-${d}`;
   };
 
-  // Parse YYYY-MM-DD as local date (00:00 local)
+  // Parse "YYYY-MM-DD" -> Date at 00:00 in *local* time
   const parseLocalDate = (ymd) => {
     const [y, m, d] = ymd.split('-').map(Number);
     return new Date(y, m - 1, d, 0, 0, 0, 0);
   };
 
-  // Monday as start of week, returns Date (local)
+  // Monday as start-of-week (returns local Date)
   const startOfWeek = (d = new Date()) => {
-    const day = d.getDay(); // Sun=0 .. Sat=6
+    const day = d.getDay();              // Sun=0..Sat=6
     const diff = (day === 0 ? -6 : 1) - day; // shift to Monday
     const monday = new Date(d);
-    monday.setHours(0, 0, 0, 0);
+    monday.setHours(0,0,0,0);
     monday.setDate(monday.getDate() + diff);
     return monday;
   };
@@ -40,58 +40,75 @@
 
   const todayISO = () => fmtLocalDate(new Date());
 
-  // ---------- App State ----------
+  // ---------- App State (LocalStorage) ----------
   const defaultState = {
     user: { name: "Momo Kromah", role: "Lecturer & Researcher" },
     settings: { weeklyCapacityHours: 8 },
+
+    // Aces (one per suit)
     aces: {
-      spades: { title: "", metrics: [] },
-      clubs: { title: "", metrics: [] },
-      hearts: { title: "", metrics: [] },
+      spades:   { title: "", metrics: [] },
+      clubs:    { title: "", metrics: [] },
+      hearts:   { title: "", metrics: [] },
       diamonds: { title: "", metrics: [] },
     },
+
+    // Strategics (2 per suit: King & Queen)
     strategics: {
-      spades: [{ title: "", due: "" }, { title: "", due: "" }],
-      clubs: [{ title: "", due: "" }, { title: "", due: "" }],
-      hearts: [{ title: "", due: "" }, { title: "", due: "" }],
+      spades:   [{ title: "", due: "" }, { title: "", due: "" }],
+      clubs:    [{ title: "", due: "" }, { title: "", due: "" }],
+      hearts:   [{ title: "", due: "" }, { title: "", due: "" }],
       diamonds: [{ title: "", due: "" }, { title: "", due: "" }],
     },
-    habits: {
-      spades: [], clubs: [], hearts: [], diamonds: []
-    },
+
+    // Habits picked during onboarding (J–2)
+    habits: { spades: [], clubs: [], hearts: [], diamonds: [] },
+
+    // Derived deck (A/K/Q/J..10)
     deck: [],
+
+    // Weekly selection
     draw: { weekStart: null, selected: [] },
+
+    // Weekly plan (flattened tasks with dates)
     plan: { weekStart: null, tasks: [] },
+
+    // Optional future use
     log: { tasks: {} }
   };
 
   const save = () => localStorage.setItem('solventDeckState', JSON.stringify(state));
   const load = () => {
-    try { return JSON.parse(localStorage.getItem('solventDeckState')) || null } catch(e){ return null }
-  }
+    try { return JSON.parse(localStorage.getItem('solventDeckState')) || null; }
+    catch(e){ return null; }
+  };
+
   let state = load() || structuredClone(defaultState);
 
-  // v0.3 / v0.3.1 runtime flags
-  let _dndBound = false;  // bind drag/drop once
-  let _copyMode = false;  // true when Alt is held
+  // ---------- Runtime flags ----------
+  // v0.3: bind drag/drop once; v0.3.1: Alt copy mode
+  let _dndBound  = false;
+  let _copyMode  = false;
 
-  // ---------- Navigation ----------
+  // ---------- Navigation + Entry ----------
   function showSection(id){
     $$('.section').forEach(s => s.classList.remove('visible'));
     const el = document.getElementById(id);
     if(el) el.classList.add('visible');
 
-    if(id==='aces') renderAceEditor();
-    if(id==='strategics') renderStrategicEditor();
-    if(id==='habits') renderHabitEditor();
-    if(id==='draw') renderDraw();
-    if(id==='plan') renderPlan();
-    if(id==='today') renderToday();
-    if(id==='deck') renderDeck();
-    if(id==='review') renderReview();
-    if(id==='insights') renderInsights();
+    // Refresh dynamic screens on entry
+    if(id==='aces')        renderAceEditor();
+    if(id==='strategics')  renderStrategicEditor();
+    if(id==='habits')      renderHabitEditor();
+    if(id==='draw')        renderDraw();
+    if(id==='plan')        renderPlan();
+    if(id==='today')       renderToday();
+    if(id==='deck')        renderDeck();
+    if(id==='review')      renderReview();
+    if(id==='insights')    renderInsights();
   }
 
+  // Top navigation
   const topNav = $('#topNav');
   if (topNav) {
     topNav.addEventListener('click', (e)=>{
@@ -100,30 +117,31 @@
       }
     });
   }
+
+  // In-page "continue" buttons
   $$('#main [data-goto]').forEach(btn => btn.addEventListener('click', (e)=>{
     const t = e.currentTarget.getAttribute('data-goto');
     showSection(t);
   }));
 
-  const beginBtn = $('#beginBtn');
-  if (beginBtn) beginBtn.addEventListener('click', ()=> showSection('how'));
-
-  const seedBtn = $('#seedBtn');
-  if (seedBtn) seedBtn.addEventListener('click', ()=>{
+  // Welcome buttons
+  $('#beginBtn')?.addEventListener('click', ()=> showSection('how'));
+  $('#seedBtn')?.addEventListener('click', ()=>{
     seedExample();
     alert('Example deck loaded. Jumping to Weekly Draw.');
     showSection('draw');
   });
 
-  // ---------- Editors ----------
+  // ---------- Per-suit meta ----------
   const suits = ['spades','clubs','hearts','diamonds'];
   const suitMeta = {
-    spades: { icon:'♠', name:'Spades', color:'suit-spades' },
-    clubs: { icon:'♣', name:'Clubs', color:'suit-clubs' },
-    hearts: { icon:'♥', name:'Hearts', color:'suit-hearts' },
+    spades:   { icon:'♠', name:'Spades',   color:'suit-spades'   },
+    clubs:    { icon:'♣', name:'Clubs',    color:'suit-clubs'    },
+    hearts:   { icon:'♥', name:'Hearts',   color:'suit-hearts'   },
     diamonds: { icon:'♦', name:'Diamonds', color:'suit-diamonds' },
   };
 
+  // ---------- ACE editor ----------
   function renderAceEditor(){
     const root = $('#aceEditor');
     if(!root) return;
@@ -144,13 +162,15 @@
     });
 
     suits.forEach(s => {
-      const t1 = $('#ace-'+s);
-      const t2 = $('#ace-'+s+'-metrics');
-      if (t1) t1.addEventListener('input', (e)=>{ state.aces[s].title = e.target.value; save(); });
-      if (t2) t2.addEventListener('input', (e)=>{ state.aces[s].metrics = e.target.value.split(',').map(x=>x.trim()).filter(Boolean); save(); });
+      $('#ace-'+s)?.addEventListener('input', (e)=>{ state.aces[s].title = e.target.value; save(); });
+      $('#ace-'+s+'-metrics')?.addEventListener('input', (e)=>{
+        state.aces[s].metrics = e.target.value.split(',').map(x=>x.trim()).filter(Boolean);
+        save();
+      });
     });
   }
 
+  // ---------- Strategics editor (King/Queen) ----------
   function renderStrategicEditor(){
     const root = $('#strategicEditor');
     if(!root) return;
@@ -159,8 +179,7 @@
       const wrap = document.createElement('div');
       wrap.className = 'card';
       const aceT = state.aces[s].title || '(set your Ace first)';
-      const rows = state.strategics[s].map((st, i)=>{
-        return `
+      const rows = state.strategics[s].map((st, i)=>`
         <div class="card-chip">
           <div class="meta"><span class="suit-badge ${suitMeta[s].color}">${suitMeta[s].icon} ${suitMeta[s].name} — ${i===0?'King':'Queen'}</span></div>
           <label class="label">Title</label>
@@ -176,8 +195,8 @@
             </div>
           </div>
           <div class="small">Ace: ${aceT}</div>
-        </div>`;
-      }).join('');
+        </div>`
+      ).join('');
       wrap.innerHTML = `
         <div class="suit-badge ${suitMeta[s].color}">${suitMeta[s].icon} ${suitMeta[s].name}</div>
         <div class="label">Ace: ${aceT}</div>
@@ -187,39 +206,37 @@
     });
 
     suits.forEach(s => state.strategics[s].forEach((_, i)=>{
-      const t = $('#strategic-'+s+'-'+i+'-title');
-      const d = $('#strategic-'+s+'-'+i+'-due');
-      const m = $('#strategic-'+s+'-'+i+'-mins');
-      if (t) t.addEventListener('input', (e)=>{ state.strategics[s][i].title = e.target.value; save(); });
-      if (d) d.addEventListener('change', (e)=>{ state.strategics[s][i].due = e.target.value; save(); });
-      if (m) m.addEventListener('change', (e)=>{ state.strategics[s][i].mins = parseInt(e.target.value||60,10); save(); });
+      $('#strategic-'+s+'-'+i+'-title')?.addEventListener('input', (e)=>{ state.strategics[s][i].title = e.target.value; save(); });
+      $('#strategic-'+s+'-'+i+'-due')?.addEventListener('change', (e)=>{ state.strategics[s][i].due = e.target.value; save(); });
+      $('#strategic-'+s+'-'+i+'-mins')?.addEventListener('change', (e)=>{ state.strategics[s][i].mins = parseInt(e.target.value||60,10); save(); });
     }));
   }
 
+  // ---------- Habit templates for onboarding ----------
   const habitTemplates = {
-    spades: [
-      { title: 'Write 300 words', cadence:'daily', duration:25 },
-      { title: 'Two research sprints', cadence:'2x', duration:45 },
+    spades:   [
+      { title: 'Write 300 words',     cadence:'daily', duration:25 },
+      { title: 'Two research sprints',cadence:'2x',    duration:45 },
       { title: 'Read one seminal paper', cadence:'weekly', duration:30 },
       { title: 'Outline next module', cadence:'weekly', duration:30 }
     ],
-    clubs: [
-      { title: '10k steps', cadence:'daily', duration:40 },
-      { title: 'Protein at each meal', cadence:'daily', duration:10 },
-      { title: 'Lights out 10pm', cadence:'daily', duration:5 },
-      { title: 'Mobility 10 min', cadence:'daily', duration:10 }
+    clubs:    [
+      { title: '10k steps',           cadence:'daily', duration:40 },
+      { title: 'Protein at each meal',cadence:'daily', duration:10 },
+      { title: 'Lights out 10pm',     cadence:'daily', duration:5 },
+      { title: 'Mobility 10 min',     cadence:'daily', duration:10 }
     ],
-    hearts: [
-      { title: 'Share three appreciations', cadence:'daily', duration:10 },
-      { title: 'Weekly partner meeting', cadence:'weekly', duration:45 },
-      { title: '1:1 with child', cadence:'weekly', duration:30 },
-      { title: 'Call a mentor', cadence:'weekly', duration:20 }
+    hearts:   [
+      { title: 'Share three appreciations', cadence:'daily',  duration:10 },
+      { title: 'Weekly partner meeting',    cadence:'weekly', duration:45 },
+      { title: '1:1 with child',            cadence:'weekly', duration:30 },
+      { title: 'Call a mentor',             cadence:'weekly', duration:20 }
     ],
     diamonds: [
-      { title: 'Track daily expenses', cadence:'daily', duration:8 },
-      { title: 'DCA invest', cadence:'weekly', duration:15 },
-      { title: 'Review budget', cadence:'weekly', duration:20 },
-      { title: 'Draft offer asset', cadence:'weekly', duration:30 }
+      { title: 'Track daily expenses', cadence:'daily',  duration:8  },
+      { title: 'DCA invest',           cadence:'weekly', duration:15 },
+      { title: 'Review budget',        cadence:'weekly', duration:20 },
+      { title: 'Draft offer asset',    cadence:'weekly', duration:30 }
     ]
   };
 
@@ -235,19 +252,22 @@
       wrap.innerHTML = `
         <div class="suit-badge ${suitMeta[s].color}">${suitMeta[s].icon} ${suitMeta[s].name}</div>
         <div class="label">Pick up to 3 starter habits</div>
-        <div class="grid grid-2">${templates.map((t, idx)=>{
-          const id = `hab-${s}-${idx}`;
-          const isChecked = selected.some(h=>h.title===t.title);
-          const cadenceLbl = t.cadence==='daily'?'Daily':(t.cadence==='2x'?'Tue/Fri':'Weekly');
-          return `<label class="card-chip"><input type="checkbox" id="${id}" ${isChecked?'checked':''}> <span class="title">${t.title}</span><span class="meta">${cadenceLbl} · ${t.duration}m</span></label>`
-        }).join('')}</div>
-      `;
+        <div class="grid grid-2">
+          ${templates.map((t, idx)=>{
+            const id = `hab-${s}-${idx}`;
+            const isChecked = selected.some(h=>h.title===t.title);
+            const cadenceLbl = t.cadence==='daily'?'Daily':(t.cadence==='2x'?'Tue/Fri':'Weekly');
+            return `<label class="card-chip">
+              <input type="checkbox" id="${id}" ${isChecked?'checked':''}>
+              <span class="title">${t.title}</span>
+              <span class="meta">${cadenceLbl} · ${t.duration}m</span>
+            </label>`;
+          }).join('')}
+        </div>`;
       root.appendChild(wrap);
 
       templates.forEach((t, idx)=>{
-        const box = $('#hab-'+s+'-'+idx);
-        if (!box) return;
-        box.addEventListener('change', (e)=>{
+        $('#hab-'+s+'-'+idx)?.addEventListener('change', (e)=>{
           const checked = e.target.checked;
           let list = state.habits[s] || [];
           if(checked){
@@ -263,31 +283,51 @@
     });
   }
 
-  // ---------- Weekly Draw ----------
+  // ---------- Build current deck from Aces/Strategics/Habits ----------
   function buildDeck(){
     const deck = [];
     suits.forEach(s => {
       const ace = state.aces[s];
       if(ace.title) deck.push({ id: 'A-'+s, suit:s, rank:'A', title: ace.title });
+
       const st = state.strategics[s];
       st.forEach((row, i)=>{
-        if(row.title){ deck.push({ id: (i===0?'K':'Q')+'-'+s, suit:s, rank:(i===0?'K':'Q'), title: row.title, due: row.due, mins: row.mins||60 }); }
+        if(row.title){
+          deck.push({
+            id: (i===0?'K':'Q')+'-'+s,
+            suit:s,
+            rank:(i===0?'K':'Q'),
+            title: row.title,
+            due: row.due,
+            mins: row.mins || 60
+          });
+        }
       });
+
       (state.habits[s]||[]).forEach((h, j)=>{
-        deck.push({ id: 'H-'+s+'-'+j, suit:s, rank: j===0?'J':'10', title: h.title, cadence:h.cadence, duration:h.duration });
+        deck.push({
+          id: 'H-'+s+'-'+j,
+          suit:s,
+          rank: j===0?'J':'10',
+          title: h.title,
+          cadence:h.cadence,
+          duration:h.duration
+        });
       });
     });
     state.deck = deck;
     save();
   }
 
+  // ---------- Weekly Draw ----------
   function drawWeekly(){
     buildDeck();
-    const countSel = $('#drawCount');
-    const perDomain = $('#minPerDomain');
+    const countSel    = $('#drawCount');
+    const perDomainEl = $('#minPerDomain');
     const count = countSel ? parseInt(countSel.value,10) : 4;
-    const ensureBalance = perDomain ? perDomain.checked : true;
-    const pool = state.deck.filter(c => c.rank!=='A');
+    const ensureBalance = perDomainEl ? perDomainEl.checked : true;
+
+    const pool = state.deck.filter(c => c.rank!=='A'); // exclude Aces from weekly draw
     const bySuit = { spades:[], clubs:[], hearts:[], diamonds:[] };
     pool.forEach(c => bySuit[c.suit].push(c));
 
@@ -307,7 +347,6 @@
     const weekStartDate = startOfWeek(new Date());
     state.draw = { weekStart: fmtLocalDate(weekStartDate), selected: selected.map(c=>c.id) };
     save();
-
     renderDraw();
   }
 
@@ -320,22 +359,19 @@
     const selected = state.deck.filter(c => selectedIds.includes(c.id));
     const renderCard = (c) => `
       <div class="card">
-        <div class="meta"><span class="suit-badge ${suitMeta[c.suit].color}">${suitMeta[c.suit].icon} ${suitMeta[c.suit].name} — ${c.rank}</span></div>
+        <div class="meta"><span class="suit-badge ${suitMeta[c.suit].color}">${suitMeta[c.suit].icon} ${c.rank}</span></div>
         <div class="title">${c.title}</div>
       </div>`;
 
-    if(selected.length===0){
-      root.innerHTML = '<div class="muted">No cards selected yet. Click "Draw my cards".</div>';
-    } else {
-      root.innerHTML = selected.map(renderCard).join('');
-    }
+    root.innerHTML = selected.length
+      ? selected.map(renderCard).join('')
+      : '<div class="muted">No cards selected yet. Click "Draw my cards".</div>';
   }
 
-  const drawBtn = $('#drawBtn');
-  if (drawBtn) drawBtn.addEventListener('click', drawWeekly);
+  $('#drawBtn')?.addEventListener('click', drawWeekly);
 
-  const genPlanBtn = $('#genPlanBtn');
-  if (genPlanBtn) genPlanBtn.addEventListener('click', ()=>{
+  // ---------- Generate Weekly Plan (guarded) ----------
+  $('#genPlanBtn')?.addEventListener('click', ()=>{
     try {
       generatePlan();
       showSection('plan');
@@ -345,13 +381,12 @@
     }
   });
 
-  // ---------- Generate Plan (guarded, timezone-safe) ----------
   function generatePlan(){
     // Ensure deck exists
     buildDeck();
 
     // Use existing week start or compute new Monday (local)
-    const weekStart = state.draw?.weekStart || fmtLocalDate(startOfWeek(new Date()));
+    const weekStart   = state.draw?.weekStart || fmtLocalDate(startOfWeek(new Date()));
     const selectedIds = Array.isArray(state.draw?.selected) ? state.draw.selected : [];
 
     // Guard: must have selected cards
@@ -368,7 +403,7 @@
     selected.forEach(c => {
       if (['K','Q'].includes(c.rank)) {
         // Strategic: one milestone on Wednesday
-        const date = fmtLocalDate(addDays(parseLocalDate(weekStart), 2)); // Mon=0 → Wed=2
+        const date = fmtLocalDate(addDays(parseLocalDate(weekStart), 2)); // Mon=0 -> Wed=2
         tasks.push({
           id: 't-'+c.id+'-WED',
           date,
@@ -381,9 +416,9 @@
       } else {
         // Habits: schedule by cadence
         let days = [];
-        if (c.cadence === 'daily')      days = [0,1,2,3,4]; // Mon–Fri
-        else if (c.cadence === '2x')    days = [1,4];       // Tue, Fri
-        else                             days = [2];         // Weekly → Wed
+        if (c.cadence === 'daily')   days = [0,1,2,3,4]; // Mon–Fri
+        else if (c.cadence === '2x') days = [1,4];       // Tue, Fri
+        else                         days = [2];         // Weekly -> Wed
 
         days.forEach(d => {
           tasks.push({
@@ -399,22 +434,21 @@
       }
     });
 
-    // Save + render
     state.plan = { weekStart, tasks };
     save();
     renderPlan();
   }
 
-  // ---------- Plan (drag/move + Alt‑copy + inline edit) ----------
+  // ---------- Render Weekly Plan (drag/move + Alt-copy + inline edit) ----------
   function renderPlan(){
     const root = $('#planGrid');
     if(!root) return;
     root.innerHTML = '';
 
     const weekStart = state.plan.weekStart || fmtLocalDate(startOfWeek(new Date()));
-    const tasks = state.plan.tasks || [];
+    const tasks     = state.plan.tasks || [];
 
-    // Build day buckets for Mon..Sun using local dates
+    // Build day buckets Mon..Sun
     const perDay = [0,1,2,3,4,5,6].map(i => ({
       date: fmtLocalDate(addDays(parseLocalDate(weekStart), i)),
       tasks: []
@@ -423,18 +457,18 @@
     // Place tasks in buckets
     tasks.forEach(t => {
       const dt = parseLocalDate(t.date);
-      const day = dt.getDay();           // Sun=0..Sat=6
-      const idx = (day + 6) % 7;         // Mon=0..Sun=6
+      const day = dt.getDay();          // Sun=0..Sat=6
+      const idx = (day + 6) % 7;        // Mon=0..Sun=6
       perDay[idx].tasks.push(t);
     });
 
     // Capacity banner
     const totalMins = tasks.reduce((a,b)=>a+(b.duration||0),0);
-    const capMins = (state.settings.weeklyCapacityHours||8)*60;
-    const usage = Math.round((totalMins/capMins)*100);
-    const banner = `Capacity used: ${Math.round(totalMins/60)}h (${usage}%) of ${state.settings.weeklyCapacityHours}h`;
-    const capEl = $('#capacityBanner');
-    if (capEl) capEl.innerText = banner;
+    const capMins   = (state.settings.weeklyCapacityHours||8)*60;
+    const usage     = Math.round((totalMins/capMins)*100);
+    $('#capacityBanner') && ($('#capacityBanner').innerText =
+      `Capacity used: ${Math.round(totalMins/60)}h (${usage}%) of ${state.settings.weeklyCapacityHours}h`
+    );
 
     // Render columns and tasks
     const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -467,18 +501,12 @@
     if (!_dndBound) {
       _dndBound = true;
 
-      // Alt toggles copy mode (visual hint)
+      // Alt toggles copy mode (visual hint via body class)
       document.addEventListener('keydown', (e) => {
-        if (e.key === 'Alt') {
-          _copyMode = true;
-          document.body.classList.add('copy-mode');
-        }
+        if (e.key === 'Alt') { _copyMode = true;  document.body.classList.add('copy-mode'); }
       });
       document.addEventListener('keyup', (e) => {
-        if (e.key === 'Alt') {
-          _copyMode = false;
-          document.body.classList.remove('copy-mode');
-        }
+        if (e.key === 'Alt') { _copyMode = false; document.body.classList.remove('copy-mode'); }
       });
 
       // DRAG START/END on tasks
@@ -487,11 +515,9 @@
         if (!taskEl) return;
 
         e.dataTransfer.effectAllowed = 'copyMove';
-
-        // snapshot copy state at drag start (also respect Alt at start)
-        const isCopy = _copyMode || !!e.altKey;
+        const isCopy = _copyMode || !!e.altKey; // snapshot at drag start
         e.dataTransfer.setData('text/task-id', taskEl.dataset.taskId);
-        e.dataTransfer.setData('text/copy', isCopy ? '1' : '0');
+        e.dataTransfer.setData('text/copy',   isCopy ? '1' : '0');
 
         if (isCopy) taskEl.classList.add('copying');
         taskEl.classList.add('dragging');
@@ -499,10 +525,7 @@
 
       root.addEventListener('dragend', (e) => {
         const taskEl = e.target.closest('.task');
-        if (taskEl) {
-          taskEl.classList.remove('dragging');
-          taskEl.classList.remove('copying');
-        }
+        if (taskEl) { taskEl.classList.remove('dragging'); taskEl.classList.remove('copying'); }
       });
 
       // DRAG OVER / LEAVE on columns
@@ -525,9 +548,8 @@
         e.preventDefault();
         col.classList.remove('drag-over');
 
-        const taskId = e.dataTransfer.getData('text/task-id');
-        const copyMeta = e.dataTransfer.getData('text/copy');
-        const isCopy = (copyMeta === '1') || _copyMode;
+        const taskId  = e.dataTransfer.getData('text/task-id');
+        const isCopy  = (e.dataTransfer.getData('text/copy') === '1') || _copyMode;
         if (!taskId) return;
 
         const newDate = col.dataset.date;
@@ -535,13 +557,12 @@
         if (!t) return;
 
         if (isCopy) {
-          const newId = 't-' + Date.now() + '-' + Math.floor(Math.random() * 1e6);
+          const newId = 't-' + Date.now() + '-' + Math.floor(Math.random()*1e6);
           const clone = { ...t, id: newId, date: newDate, status: 'planned' };
           state.plan.tasks.push(clone);
         } else {
           if (t.date !== newDate) t.date = newDate;
         }
-
         save();
         renderPlan();
       });
@@ -559,22 +580,14 @@
         input.className = 'inline-edit';
         input.type = 'text';
         input.value = t.title;
-        titleEl.replaceWith(input);
-        input.focus();
-        input.select();
 
-        const commit = () => {
-          const newVal = input.value.trim() || t.title;
-          t.title = newVal;
-          save();
-          renderPlan();
-        };
+        titleEl.replaceWith(input);
+        input.focus(); input.select();
+
+        const commit = () => { t.title = (input.value.trim() || t.title); save(); renderPlan(); };
         const cancel = () => renderPlan();
 
-        input.addEventListener('keydown', (ev) => {
-          if (ev.key === 'Enter') commit();
-          else if (ev.key === 'Escape') cancel();
-        });
+        input.addEventListener('keydown', (ev) => { if (ev.key==='Enter') commit(); else if (ev.key==='Escape') cancel(); });
         input.addEventListener('blur', commit);
       });
 
@@ -590,35 +603,24 @@
         const input = document.createElement('input');
         input.className = 'inline-edit';
         input.type = 'number';
-        input.min = '5';
-        input.max = '240';
-        input.step = '5';
+        input.min = '5'; input.max = '240'; input.step = '5';
         input.value = t.duration || 20;
 
         durEl.replaceWith(input);
-        input.focus();
-        input.select();
+        input.focus(); input.select();
 
         const commit = () => {
           const val = parseInt(input.value, 10);
-          if (!isNaN(val) && val > 0) {
-            t.duration = Math.max(5, Math.min(240, val));
-            save();
-            renderPlan();
-          } else {
-            renderPlan();
-          }
+          if (!isNaN(val) && val > 0) { t.duration = Math.max(5, Math.min(240, val)); save(); renderPlan(); }
+          else { renderPlan(); }
         };
         const cancel = () => renderPlan();
 
-        input.addEventListener('keydown', (ev) => {
-          if (ev.key === 'Enter') commit();
-          else if (ev.key === 'Escape') cancel();
-        });
+        input.addEventListener('keydown', (ev) => { if (ev.key==='Enter') commit(); else if (ev.key==='Escape') cancel(); });
         input.addEventListener('blur', commit);
       });
 
-      // MARK DONE
+      // MARK DONE toggle
       root.addEventListener('click', (e) => {
         const id = e.target.getAttribute && e.target.getAttribute('data-done');
         if(!id) return;
@@ -689,12 +691,11 @@
     });
   }
 
-  // Export
-  const exportBtn = $('#exportBtn');
-  if (exportBtn) exportBtn.addEventListener('click', ()=>{
+  // ---------- Export ----------
+  $('#exportBtn')?.addEventListener('click', ()=>{
     buildDeck();
     const blob = new Blob([JSON.stringify({state}, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
+    const url  = URL.createObjectURL(blob);
     const link = $('#downloadLink');
     link.href = url;
     link.download = 'solvent-deck-export.json';
@@ -702,7 +703,7 @@
     link.textContent = 'Download export';
   });
 
-  // ---------- Review & Insights ----------
+  // ---------- Review ----------
   function renderReview(){
     const root = $('#reviewView');
     if(!root) return;
@@ -721,16 +722,17 @@
       </div>
       <hr class="sep"/>
       <div class="grid grid-2">
-        ${['spades','clubs','hearts','diamonds'].map(s=>{
+        ${suits.map(s=>{
           const sTasks = tasks.filter(t=>t.suit===s);
-          const sDone = sTasks.filter(t=>t.status==='done').length;
-          const sPct = sTasks.length? Math.round((sDone/sTasks.length)*100) : 0;
-          return `<div class=card><strong>${suitMeta[s].icon} ${suitMeta[s].name}</strong><div class=small>${sDone}/${sTasks.length} · ${sPct}%</div></div>`
+          const sDone  = sTasks.filter(t=>t.status==='done').length;
+          const sPct   = sTasks.length? Math.round((sDone/sTasks.length)*100) : 0;
+          return `<div class="card"><strong>${suitMeta[s].icon} ${suitMeta[s].name}</strong><div class="small">${sDone}/${sTasks.length} · ${sPct}%</div></div>`;
         }).join('')}
       </div>
     `;
   }
 
+  // ---------- Insights ----------
   function renderInsights(){
     const root = $('#insightsView');
     if(!root) return;
@@ -739,18 +741,26 @@
     if(tasks.length===0){ root.innerHTML = '<div class="muted">No data yet.</div>'; return; }
 
     const byTitle = {};
-    tasks.forEach(t=>{ byTitle[t.title] = byTitle[t.title]||{ total:0, done:0 }; byTitle[t.title].total++; if(t.status==='done') byTitle[t.title].done++; });
-    const rows = Object.entries(byTitle).map(([title, v])=>({ title, ratio: v.done/(v.total||1), total:v.total })).sort((a,b)=>b.ratio-a.ratio).slice(0,5);
+    tasks.forEach(t=>{
+      byTitle[t.title] = byTitle[t.title] || { total:0, done:0 };
+      byTitle[t.title].total++;
+      if(t.status==='done') byTitle[t.title].done++;
+    });
+    const rows = Object.entries(byTitle)
+      .map(([title, v])=>({ title, ratio: v.done/(v.total||1), total:v.total }))
+      .sort((a,b)=>b.ratio-a.ratio)
+      .slice(0,5);
 
     const list = document.createElement('div');
     list.className = 'card';
-    list.innerHTML = `<h3>Most effective cards</h3>${rows.map(r=>`<div class=small>${Math.round(r.ratio*100)}% of ${r.total} — ${r.title}</div>`).join('')}`;
+    list.innerHTML = `<h3>Most effective cards</h3>${
+      rows.map(r=>`<div class="small">${Math.round(r.ratio*100)}% of ${r.total} — ${r.title}</div>`).join('')
+    }`;
     root.appendChild(list);
   }
 
   // ---------- Settings ----------
-  const saveSettingsBtn = $('#saveSettingsBtn');
-  if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', ()=>{
+  $('#saveSettingsBtn')?.addEventListener('click', ()=>{
     const cap = $('#capHours');
     const v = parseInt(cap && cap.value || 8,10);
     state.settings.weeklyCapacityHours = v;
@@ -758,40 +768,39 @@
     alert('Settings saved.');
   });
 
-  const resetBtn = $('#resetBtn');
-  if (resetBtn) resetBtn.addEventListener('click', ()=>{
+  $('#resetBtn')?.addEventListener('click', ()=>{
     const ok = confirm('Reset Solvent Deck to factory settings? This will clear your local data (deck/draw/plan).');
     if(!ok) return;
     localStorage.removeItem('solventDeckState');
     location.reload();
   });
 
-  // ---------- Example Seeder ----------
+  // ---------- Seeder (for demos) ----------
   function seedExample(){
-    state.aces.spades = { title:'Lead solvency psychology as a field', metrics:['2 papers','1 book','5 talks'] };
-    state.aces.clubs = { title:'Sustain a high‑energy body', metrics:['7.5h sleep','150 workouts/yr'] };
-    state.aces.hearts = { title:'Build a solvent family culture', metrics:['weekly partner meeting'] };
+    state.aces.spades   = { title:'Lead solvency psychology as a field', metrics:['2 papers','1 book','5 talks'] };
+    state.aces.clubs    = { title:'Sustain a high‑energy body',          metrics:['7.5h sleep','150 workouts/yr'] };
+    state.aces.hearts   = { title:'Build a solvent family culture',       metrics:['weekly partner meeting'] };
     state.aces.diamonds = { title:'Become financially sovereign creator', metrics:['30% savings','12mo runway'] };
 
     state.strategics.spades = [
-      { title:'Complete territoriality SLR and submit', due:fmtLocalDate(addDays(new Date(), 120)), mins:90 },
-      { title:"Design and launch 'Solvent Career' course", due:fmtLocalDate(addDays(new Date(), 180)), mins:60 }
+      { title:'Complete territoriality SLR and submit',           due:fmtLocalDate(addDays(new Date(), 120)), mins:90 },
+      { title:"Design and launch 'Solvent Career' course",        due:fmtLocalDate(addDays(new Date(), 180)), mins:60 }
     ];
     state.strategics.clubs = [
-      { title:'Optimize sleep routine by June', due:fmtLocalDate(addDays(new Date(), 130)), mins:45 },
-      { title:'Run comfortable 5k', due:fmtLocalDate(addDays(new Date(), 160)), mins:40 }
+      { title:'Optimize sleep routine by June',                   due:fmtLocalDate(addDays(new Date(), 130)), mins:45 },
+      { title:'Run comfortable 5k',                               due:fmtLocalDate(addDays(new Date(), 160)), mins:40 }
     ];
     state.strategics.hearts = [
-      { title:'Weekly partner meeting ritual', due:fmtLocalDate(addDays(new Date(), 84)), mins:45 },
-      { title:'1:1 with each child weekly', due:fmtLocalDate(addDays(new Date(), 84)), mins:30 }
+      { title:'Weekly partner meeting ritual',                    due:fmtLocalDate(addDays(new Date(), 84)),  mins:45 },
+      { title:'1:1 with each child weekly',                       due:fmtLocalDate(addDays(new Date(), 84)),  mins:30 }
     ];
     state.strategics.diamonds = [
-      { title:'Launch consulting offer by July', due:fmtLocalDate(addDays(new Date(), 170)), mins:60 },
-      { title:'Grant pipeline setup', due:fmtLocalDate(addDays(new Date(), 150)), mins:50 }
+      { title:'Launch consulting offer by July',                  due:fmtLocalDate(addDays(new Date(), 170)), mins:60 },
+      { title:'Grant pipeline setup',                             due:fmtLocalDate(addDays(new Date(), 150)), mins:50 }
     ];
 
     state.habits.spades = [
-      { title:'Write 300 words', cadence:'daily', duration:25 },
+      { title:'Write 300 words', cadence:'daily',  duration:25 },
       { title:'Two research sprints', cadence:'2x', duration:45 },
       { title:'Read one seminal paper', cadence:'weekly', duration:30 }
     ];
@@ -802,13 +811,13 @@
     ];
     state.habits.hearts = [
       { title:'Share three appreciations', cadence:'daily', duration:10 },
-      { title:'Weekly partner meeting', cadence:'weekly', duration:45 },
-      { title:'Call a mentor', cadence:'weekly', duration:20 }
+      { title:'Weekly partner meeting',    cadence:'weekly', duration:45 },
+      { title:'Call a mentor',             cadence:'weekly', duration:20 }
     ];
     state.habits.diamonds = [
-      { title:'Track daily expenses', cadence:'daily', duration:8 },
-      { title:'DCA invest', cadence:'weekly', duration:15 },
-      { title:'Review budget', cadence:'weekly', duration:20 }
+      { title:'Track daily expenses', cadence:'daily',  duration:8  },
+      { title:'DCA invest',           cadence:'weekly', duration:15 },
+      { title:'Review budget',        cadence:'weekly', duration:20 }
     ];
 
     state.draw = { weekStart: null, selected: [] };
@@ -816,6 +825,6 @@
     save();
   }
 
-  // First render
+  // ---------- First render ----------
   showSection('welcome');
 })();
