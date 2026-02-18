@@ -1,46 +1,12 @@
 
-
 (function(){
-  // ---------- Tiny DOM helpers ----------
+  // ========= Tiny DOM helpers =========
   const $  = (sel, root=document) => root.querySelector(sel);
   const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 
-// ---- Empty deck message helpers ----
-function showEmptyDeckMessage(show){
-  const box = document.getElementById('drawEmptyMsg');
-  if (!box) return;
-  box.style.display = show ? 'block' : 'none';
-}
-
-function wireEmptyDeckActions(){
-  const btnExample = document.getElementById('emptyLoadExample');
-  const btnAces    = document.getElementById('emptyGotoAces');
-
-  // Load example deck, then come back to Draw
-  if (btnExample) btnExample.addEventListener('click', ()=>{
-    try {
-      if (typeof seedExample === 'function') {
-        seedExample();
-        alert('Example deck loaded. You can now draw your cards.');
-        showSection('draw');
-      }
-    } catch(e) {
-      console.error('[EmptyDeck] seedExample error:', e);
-      alert('Could not load the example deck. Please refresh and try again.');
-    }
-  });
-
-  // Jump to Aces to start building
-  if (btnAces) btnAces.addEventListener('click', ()=> showSection('aces'));
-}
-
-// Call this once on startup (safe if elements are not yet in DOM)
-wireEmptyDeckActions();
-
-  // ---------- Local-time date helpers (no UTC drift) ----------
+  // ========= Local-time date helpers (no UTC drift) =========
   const pad2 = n => (n < 10 ? '0' + n : '' + n);
 
-  // Format Date -> "YYYY-MM-DD" in *local* time
   const fmtLocalDate = (dateObj) => {
     const y = dateObj.getFullYear();
     const m = pad2(dateObj.getMonth() + 1);
@@ -48,66 +14,35 @@ wireEmptyDeckActions();
     return `${y}-${m}-${d}`;
   };
 
-  // Parse "YYYY-MM-DD" -> Date at 00:00 in *local* time
   const parseLocalDate = (ymd) => {
-    const [y, m, d] = ymd.split('-').map(Number);
-    return new Date(y, m - 1, d, 0, 0, 0, 0);
+    const [y, m, d] = (ymd || '').split('-').map(Number);
+    return new Date(y || 1970, (m||1) - 1, d || 1, 0, 0, 0, 0);
   };
 
-  // Monday as start-of-week (returns local Date)
   const startOfWeek = (d = new Date()) => {
-    const day = d.getDay();              // Sun=0..Sat=6
+    const day = d.getDay(); // Sun=0 .. Sat=6
     const diff = (day === 0 ? -6 : 1) - day; // shift to Monday
     const monday = new Date(d);
-    monday.setHours(0,0,0,0);
+    monday.setHours(0, 0, 0, 0);
     monday.setDate(monday.getDate() + diff);
     return monday;
   };
 
-  // Add days in local time
   const addDays = (d, n) => {
     const x = new Date(d);
     x.setDate(x.getDate() + n);
     return x;
   };
 
-  const todayISO = () => fmtLocalDate(new Date());
-
-  // ---------- App State (LocalStorage) ----------
+  // ========= App State =========
   const defaultState = {
-    user: { name: "Momo Kromah", role: "Lecturer & Researcher" },
     settings: { weeklyCapacityHours: 8 },
-
-    // Aces (one per suit)
-    aces: {
-      spades:   { title: "", metrics: [] },
-      clubs:    { title: "", metrics: [] },
-      hearts:   { title: "", metrics: [] },
-      diamonds: { title: "", metrics: [] },
-    },
-
-    // Strategics (2 per suit: King & Queen)
-    strategics: {
-      spades:   [{ title: "", due: "" }, { title: "", due: "" }],
-      clubs:    [{ title: "", due: "" }, { title: "", due: "" }],
-      hearts:   [{ title: "", due: "" }, { title: "", due: "" }],
-      diamonds: [{ title: "", due: "" }, { title: "", due: "" }],
-    },
-
-    // Habits picked during onboarding (J–2)
-    habits: { spades: [], clubs: [], hearts: [], diamonds: [] },
-
-    // Derived deck (A/K/Q/J..10)
+    aces:     { spades:{}, clubs:{}, hearts:{}, diamonds:{} },
+    strategics: { spades:[{},{}], clubs:[{},{}], hearts:[{},{}], diamonds:[{},{}] },
+    habits:   { spades:[], clubs:[], hearts:[], diamonds:[] },
     deck: [],
-
-    // Weekly selection
     draw: { weekStart: null, selected: [] },
-
-    // Weekly plan (flattened tasks with dates)
-    plan: { weekStart: null, tasks: [] },
-
-    // Optional future use
-    log: { tasks: {} }
+    plan: { weekStart: null, tasks: [] }
   };
 
   const save = () => localStorage.setItem('solventDeckState', JSON.stringify(state));
@@ -115,57 +50,13 @@ wireEmptyDeckActions();
     try { return JSON.parse(localStorage.getItem('solventDeckState')) || null; }
     catch(e){ return null; }
   };
-
   let state = load() || structuredClone(defaultState);
 
-  // ---------- Runtime flags ----------
-  // v0.3: bind drag/drop once; v0.3.1: Alt copy mode
-  let _dndBound  = false;
-  let _copyMode  = false;
+  // runtime flags
+  let _dndBound = false;
+  let _copyMode = false;
 
-  // ---------- Navigation + Entry ----------
-  function showSection(id){
-    $$('.section').forEach(s => s.classList.remove('visible'));
-    const el = document.getElementById(id);
-    if(el) el.classList.add('visible');
-
-    // Refresh dynamic screens on entry
-    if(id==='aces')        renderAceEditor();
-    if(id==='strategics')  renderStrategicEditor();
-    if(id==='habits')      renderHabitEditor();
-    if(id==='draw')        renderDraw();
-    if(id==='plan')        renderPlan();
-    if(id==='today')       renderToday();
-    if(id==='deck')        renderDeck();
-    if(id==='review')      renderReview();
-    if(id==='insights')    renderInsights();
-  }
-
-  // Top navigation
-  const topNav = $('#topNav');
-  if (topNav) {
-    topNav.addEventListener('click', (e)=>{
-      if(e.target.matches('button[data-section]')){
-        showSection(e.target.getAttribute('data-section'));
-      }
-    });
-  }
-
-  // In-page "continue" buttons
-  $$('#main [data-goto]').forEach(btn => btn.addEventListener('click', (e)=>{
-    const t = e.currentTarget.getAttribute('data-goto');
-    showSection(t);
-  }));
-
-  // Welcome buttons
-  $('#beginBtn')?.addEventListener('click', ()=> showSection('how'));
-  $('#seedBtn')?.addEventListener('click', ()=>{
-    seedExample();
-    alert('Example deck loaded. Jumping to Weekly Draw.');
-    showSection('draw');
-  });
-
-  // ---------- Per-suit meta ----------
+  // ========= Suits =========
   const suits = ['spades','clubs','hearts','diamonds'];
   const suitMeta = {
     spades:   { icon:'♠', name:'Spades',   color:'suit-spades'   },
@@ -174,325 +65,262 @@ wireEmptyDeckActions();
     diamonds: { icon:'♦', name:'Diamonds', color:'suit-diamonds' },
   };
 
-  // ---------- ACE editor ----------
-  function renderAceEditor(){
-    const root = $('#aceEditor');
-    if(!root) return;
-    root.innerHTML = '';
-    suits.forEach(s => {
-      const wrap = document.createElement('div');
-      wrap.className = 'card';
-      wrap.innerHTML = `
-        <div class="suit-badge ${suitMeta[s].color}">${suitMeta[s].icon} ${suitMeta[s].name} — Ace</div>
-        <div class="card-editor">
-          <label class="label">Ace Title</label>
-          <input type="text" id="ace-${s}" placeholder="Identity-level goal for ${suitMeta[s].name}" value="${state.aces[s].title || ''}">
-          <label class="label">Metrics (comma-separated)</label>
-          <input type="text" id="ace-${s}-metrics" placeholder="e.g., 2 papers, 1 book" value="${(state.aces[s].metrics||[]).join(', ')}">
-          <div class="small">Tip: Bold but measurable.</div>
-        </div>`;
-      root.appendChild(wrap);
-    });
+  // ========= Navigation with guards (prevents freezes) =========
+  function showSection(id){
+    $$('.section').forEach(s => s.classList.remove('visible'));
+    const el = document.getElementById(id);
+    if (el) el.classList.add('visible');
 
-    suits.forEach(s => {
-      $('#ace-'+s)?.addEventListener('input', (e)=>{ state.aces[s].title = e.target.value; save(); });
-      $('#ace-'+s+'-metrics')?.addEventListener('input', (e)=>{
-        state.aces[s].metrics = e.target.value.split(',').map(x=>x.trim()).filter(Boolean);
-        save();
-      });
+    if (id==='draw'     && typeof renderDraw      === 'function') renderDraw();
+    if (id==='plan'     && typeof renderPlan      === 'function') renderPlan();
+    if (id==='today'    && typeof renderToday     === 'function') renderToday();
+    if (id==='deck'     && typeof renderDeck      === 'function') renderDeck();
+    if (id==='review'   && typeof renderReview    === 'function') renderReview();
+    if (id==='insights' && typeof renderInsights  === 'function') renderInsights();
+    if (id==='aces'     && typeof renderAceEditor === 'function') renderAceEditor?.();
+    if (id==='strategics'&& typeof renderStrategicEditor==='function') renderStrategicEditor?.();
+    if (id==='habits'   && typeof renderHabitEditor==='function') renderHabitEditor?.();
+  }
+
+  // top nav binding
+  const topNav = $('#topNav');
+  if (topNav) {
+    topNav.addEventListener('click', (e)=>{
+      if (e.target.matches('button[data-section]')) {
+        showSection(e.target.getAttribute('data-section'));
+      }
     });
   }
 
-  // ---------- Strategics editor (King/Queen) ----------
-  function renderStrategicEditor(){
-    const root = $('#strategicEditor');
-    if(!root) return;
-    root.innerHTML = '';
-    suits.forEach(s => {
-      const wrap = document.createElement('div');
-      wrap.className = 'card';
-      const aceT = state.aces[s].title || '(set your Ace first)';
-      const rows = state.strategics[s].map((st, i)=>`
-        <div class="card-chip">
-          <div class="meta"><span class="suit-badge ${suitMeta[s].color}">${suitMeta[s].icon} ${suitMeta[s].name} — ${i===0?'King':'Queen'}</span></div>
-          <label class="label">Title</label>
-          <input type="text" id="strategic-${s}-${i}-title" value="${st.title||''}" placeholder="Project that advances the Ace">
-          <div class="grid grid-2">
-            <div>
-              <label class="label">Finish date</label>
-              <input type="date" id="strategic-${s}-${i}-due" value="${st.due||''}">
-            </div>
-            <div>
-              <label class="label">Planned weekly minutes</label>
-              <input type="number" id="strategic-${s}-${i}-mins" value="${st.mins||60}" min="15" max="240">
-            </div>
-          </div>
-          <div class="small">Ace: ${aceT}</div>
-        </div>`
-      ).join('');
-      wrap.innerHTML = `
-        <div class="suit-badge ${suitMeta[s].color}">${suitMeta[s].icon} ${suitMeta[s].name}</div>
-        <div class="label">Ace: ${aceT}</div>
-        ${rows}
-      `;
-      root.appendChild(wrap);
-    });
+  // seed example button (Welcome)
+  $('#seedBtn')?.addEventListener('click', ()=>{
+    seedExample();
+    alert('Example deck loaded. Jumping to Weekly Draw.');
+    showSection('draw');
+  });
 
-    suits.forEach(s => state.strategics[s].forEach((_, i)=>{
-      $('#strategic-'+s+'-'+i+'-title')?.addEventListener('input', (e)=>{ state.strategics[s][i].title = e.target.value; save(); });
-      $('#strategic-'+s+'-'+i+'-due')?.addEventListener('change', (e)=>{ state.strategics[s][i].due = e.target.value; save(); });
-      $('#strategic-'+s+'-'+i+'-mins')?.addEventListener('change', (e)=>{ state.strategics[s][i].mins = parseInt(e.target.value||60,10); save(); });
-    }));
-  }
-
-  // ---------- Habit templates for onboarding ----------
-  const habitTemplates = {
-    spades:   [
-      { title: 'Write 300 words',     cadence:'daily', duration:25 },
-      { title: 'Two research sprints',cadence:'2x',    duration:45 },
-      { title: 'Read one seminal paper', cadence:'weekly', duration:30 },
-      { title: 'Outline next module', cadence:'weekly', duration:30 }
-    ],
-    clubs:    [
-      { title: '10k steps',           cadence:'daily', duration:40 },
-      { title: 'Protein at each meal',cadence:'daily', duration:10 },
-      { title: 'Lights out 10pm',     cadence:'daily', duration:5 },
-      { title: 'Mobility 10 min',     cadence:'daily', duration:10 }
-    ],
-    hearts:   [
-      { title: 'Share three appreciations', cadence:'daily',  duration:10 },
-      { title: 'Weekly partner meeting',    cadence:'weekly', duration:45 },
-      { title: '1:1 with child',            cadence:'weekly', duration:30 },
-      { title: 'Call a mentor',             cadence:'weekly', duration:20 }
-    ],
-    diamonds: [
-      { title: 'Track daily expenses', cadence:'daily',  duration:8  },
-      { title: 'DCA invest',           cadence:'weekly', duration:15 },
-      { title: 'Review budget',        cadence:'weekly', duration:20 },
-      { title: 'Draft offer asset',    cadence:'weekly', duration:30 }
-    ]
-  };
-
-  function renderHabitEditor(){
-    const root = $('#habitEditor');
-    if(!root) return;
-    root.innerHTML = '';
-    suits.forEach(s => {
-      const wrap = document.createElement('div');
-      wrap.className = 'card';
-      const selected = state.habits[s] || [];
-      const templates = habitTemplates[s];
-      wrap.innerHTML = `
-        <div class="suit-badge ${suitMeta[s].color}">${suitMeta[s].icon} ${suitMeta[s].name}</div>
-        <div class="label">Pick up to 3 starter habits</div>
-        <div class="grid grid-2">
-          ${templates.map((t, idx)=>{
-            const id = `hab-${s}-${idx}`;
-            const isChecked = selected.some(h=>h.title===t.title);
-            const cadenceLbl = t.cadence==='daily'?'Daily':(t.cadence==='2x'?'Tue/Fri':'Weekly');
-            return `<label class="card-chip">
-              <input type="checkbox" id="${id}" ${isChecked?'checked':''}>
-              <span class="title">${t.title}</span>
-              <span class="meta">${cadenceLbl} · ${t.duration}m</span>
-            </label>`;
-          }).join('')}
-        </div>`;
-      root.appendChild(wrap);
-
-      templates.forEach((t, idx)=>{
-        $('#hab-'+s+'-'+idx)?.addEventListener('change', (e)=>{
-          const checked = e.target.checked;
-          let list = state.habits[s] || [];
-          if(checked){
-            if(list.length >= 3){ alert('Select up to 3 to keep it light.'); e.target.checked=false; return; }
-            list.push(t);
-          } else {
-            list = list.filter(h=>h.title!==t.title);
-          }
-          state.habits[s] = list;
-          save();
-        });
-      });
-    });
-  }
-
-  // ---------- Build current deck from Aces/Strategics/Habits ----------
+  // ========= Build Deck from current Aces/Strategics/Habits =========
   function buildDeck(){
     const deck = [];
     suits.forEach(s => {
       const ace = state.aces[s];
-      if(ace.title) deck.push({ id: 'A-'+s, suit:s, rank:'A', title: ace.title });
+      if (ace && ace.title) deck.push({ id:'A-'+s, suit:s, rank:'A', title: ace.title });
 
-      const st = state.strategics[s];
-      st.forEach((row, i)=>{
-        if(row.title){
+      (state.strategics[s]||[]).forEach((row, i)=>{
+        if (row && row.title) {
           deck.push({
             id: (i===0?'K':'Q')+'-'+s,
             suit:s,
             rank:(i===0?'K':'Q'),
             title: row.title,
             due: row.due,
-            mins: row.mins || 60
+            mins: row.mins||60
           });
         }
       });
 
       (state.habits[s]||[]).forEach((h, j)=>{
-        deck.push({
-          id: 'H-'+s+'-'+j,
-          suit:s,
-          rank: j===0?'J':'10',
-          title: h.title,
-          cadence:h.cadence,
-          duration:h.duration
-        });
+        if (h && h.title) {
+          deck.push({
+            id: 'H-'+s+'-'+j,
+            suit:s,
+            rank: j===0 ? 'J' : '10',
+            title: h.title,
+            cadence:h.cadence,
+            duration:h.duration||20
+          });
+        }
       });
     });
     state.deck = deck;
     save();
   }
 
-  // ---------- Weekly Draw ----------
+  // ========= Empty-deck helper (used by Draw) =========
+  function showEmptyDeckMessage(show){
+    const box = document.getElementById('drawEmptyMsg');
+    if (!box) return;
+    box.style.display = show ? 'block' : 'none';
+  }
+  function wireEmptyDeckActions(){
+    const btnExample = document.getElementById('emptyLoadExample');
+    const btnAces    = document.getElementById('emptyGotoAces');
+    if (btnExample) btnExample.addEventListener('click', ()=>{
+      try {
+        seedExample();
+        alert('Example deck loaded. You can now draw your cards.');
+        showSection('draw');
+      } catch(e) {
+        console.error('[EmptyDeck] seedExample error:', e);
+        alert('Could not load the example deck. Please refresh and try again.');
+      }
+    });
+    if (btnAces) btnAces.addEventListener('click', ()=> showSection('aces'));
+  }
+  wireEmptyDeckActions();
+
+  // ========= Weekly Draw (known-good) =========
   function drawWeekly(){
     buildDeck();
-    const countSel    = $('#drawCount');
-    const perDomainEl = $('#minPerDomain');
-    const count = countSel ? parseInt(countSel.value,10) : 4;
-    const ensureBalance = perDomainEl ? perDomainEl.checked : true;
 
-    const pool = state.deck.filter(c => c.rank!=='A'); // exclude Aces from weekly draw
+    const countSel = $('#drawCount');
+    const perDomain = $('#minPerDomain');
+    const count = countSel ? parseInt(countSel.value,10) : 4;
+    const ensureBalance = perDomain ? perDomain.checked : true;
+
+    const deck = Array.isArray(state.deck) ? state.deck : [];
+    const pool = deck.filter(c => c && c.rank !== 'A');
+
+    if (!pool.length) {
+      showEmptyDeckMessage(true);
+      const root = $('#drawResult');
+      if (root) root.innerHTML = '<div class="muted">No cards yet. Load the example deck or add cards in Aces / Strategics / Habits.</div>';
+      return;
+    }
+    showEmptyDeckMessage(false);
+
     const bySuit = { spades:[], clubs:[], hearts:[], diamonds:[] };
-    pool.forEach(c => bySuit[c.suit].push(c));
+    pool.forEach(c => { if (bySuit[c.suit]) bySuit[c.suit].push(c); });
 
     const selected = [];
-    if(ensureBalance){
+    if (ensureBalance){
       suits.forEach(s => {
-        if(bySuit[s].length>0 && selected.length<count){
+        if (bySuit[s].length > 0 && selected.length < count){
           selected.push(bySuit[s][Math.floor(Math.random()*bySuit[s].length)]);
         }
       });
     }
-    while(selected.length < count && pool.length>0){
-      const c = pool.splice(Math.floor(Math.random()*pool.length), 1)[0];
-      if(!selected.find(x=>x.id===c.id)) selected.push(c);
+    const poolCopy = pool.slice();
+    while (selected.length < count && poolCopy.length > 0){
+      const c = poolCopy.splice(Math.floor(Math.random()*poolCopy.length), 1)[0];
+      if (!selected.find(x => x.id === c.id)) selected.push(c);
     }
-  
-function drawWeekly(){
-  buildDeck();
-
-  // Read controls
-  const countSel = $('#drawCount');
-  const perDomain = $('#minPerDomain');
-  const count = countSel ? parseInt(countSel.value,10) : 4;
-  const ensureBalance = perDomain ? perDomain.checked : true;
-
-  // Build the pool (exclude Aces from random weekly draw)
-  const pool = (state.deck || []).filter(c => c && c.rank !== 'A');
-
-  // If there's nothing to draw from, show the helper message and bail early
-  if (!pool.length) {
-    showEmptyDeckMessage(true);
-    // Also clear any previous selection rendering
-    const root = $('#drawResult');
-    if (root) root.innerHTML = '<div class="muted">No cards yet. Load the example deck or add cards in Aces / Strategics / Habits.</div>';
-    return;
-  }
 
     const weekStartDate = startOfWeek(new Date());
     state.draw = { weekStart: fmtLocalDate(weekStartDate), selected: selected.map(c=>c.id) };
     save();
-    renderDraw();
-  // Hide message if previously shown
-  showEmptyDeckMessage(false);
 
-  // Balance helper
-  const bySuit = { spades:[], clubs:[], hearts:[], diamonds:[] };
-  pool.forEach(c => { if (bySuit[c.suit]) bySuit[c.suit].push(c); });
-
-  // Selection
-  const selected = [];
-  if (ensureBalance){
-    ['spades','clubs','hearts','diamonds'].forEach(s => {
-      if (bySuit[s].length > 0 && selected.length < count){
-        selected.push(bySuit[s][Math.floor(Math.random()*bySuit[s].length)]);
-      }
-    });
-  }
-  while (selected.length < count && pool.length > 0){
-    const c = pool.splice(Math.floor(Math.random()*pool.length), 1)[0];
-    if (!selected.find(x => x.id === c.id)) selected.push(c);
+    try { renderDraw(); } catch (err) { console.error('[Draw] render error:', err); }
   }
 
   function renderDraw(){
     buildDeck();
-  // Save selection + week
-  const weekStartDate = startOfWeek(new Date());
-  state.draw = { weekStart: fmtLocalDate(weekStartDate), selected: selected.map(c=>c.id) };
-  save();
-
-  renderDraw();
-}
-
-
-  
-function renderDraw(){
-  buildDeck();
-  // Hide empty message if pool is not empty anymore
-  const poolNow = (state.deck || []).filter(c => c && c.rank !== 'A');
-  showEmptyDeckMessage(poolNow.length === 0);
 
     const root = $('#drawResult');
-    if(!root) return;
+    if (!root) return;
     root.innerHTML = '';
-    const selectedIds = state.draw.selected || [];
-    const selected = state.deck.filter(c => selectedIds.includes(c.id));
+
+    const selectedIds = (state.draw && Array.isArray(state.draw.selected)) ? state.draw.selected : [];
+    const deck = Array.isArray(state.deck) ? state.deck : [];
+
+    if (!selectedIds.length) {
+      const poolNow = deck.filter(c => c && c.rank !== 'A');
+      showEmptyDeckMessage(poolNow.length === 0);
+      root.innerHTML = '<div class="muted">No cards selected yet. Click "Draw my cards".</div>';
+      return;
+    }
+
+    const selected = deck.filter(c => selectedIds.includes(c.id));
     const renderCard = (c) => `
       <div class="card">
-        <div class="meta"><span class="suit-badge ${suitMeta[c.suit].color}">${suitMeta[c.suit].icon} ${c.rank}</span></div>
+        <div class="meta">
+          <span class="suit-badge ${suitMeta[c.suit].color}">
+            ${suitMeta[c.suit].icon} ${c.rank}
+          </span>
+        </div>
         <div class="title">${c.title}</div>
       </div>`;
-
     root.innerHTML = selected.length
       ? selected.map(renderCard).join('')
       : '<div class="muted">No cards selected yet. Click "Draw my cards".</div>';
   }
 
-  $('#drawBtn')?.addEventListener('click', drawWeekly);
+  // Bind Draw button (defensive)
+  const drawBtn = $('#drawBtn');
+  if (drawBtn) {
+    drawBtn.addEventListener('click', () => {
+      try { drawWeekly(); }
+      catch (err) {
+        console.error('[Draw] error:', err);
+        alert('Something went wrong drawing cards. I will reload the page so you can try again.');
+        location.reload();
+      }
+    });
+  }
 
-  // ---------- Generate Weekly Plan (guarded) ----------
-  $('#genPlanBtn')?.addEventListener('click', ()=>{
+  // ========= Plan (with Delete + Alt-copy + inline edit + summary guard) =========
+  function renderPlanSummary(){
+    const box = document.getElementById('planSummary');
+    if (!box) return;
+    const tasks = (state.plan && Array.isArray(state.plan.tasks)) ? state.plan.tasks : [];
+    const totalMins = tasks.reduce((a,b)=> a+(b.duration||0), 0);
+    const totalHours = Math.round((totalMins/60)*10)/10;
+    const capHrs = state.settings?.weeklyCapacityHours || 8;
+    const capMins = capHrs*60;
+    const usage = capMins ? Math.round((totalMins/capMins)*100) : 0;
+
+    const counts = { spades:0, clubs:0, hearts:0, diamonds:0 };
+    tasks.forEach(t => { if (counts[t.suit]!==undefined) counts[t.suit]++; });
+
+    let usageClass = 'badge-ok';
+    if (usage >= 90) usageClass='badge-high';
+    else if (usage >= 70) usageClass='badge-warn';
+
+    let hint = 'Looks balanced. Aim for small, meaningful steps.';
+    const vals = Object.values(counts);
+    const max = Math.max(...vals,0), min = Math.min(...vals,0);
+    if (usage >= 95) hint = 'This looks heavy—consider reducing durations or moving a card.';
+    else if (usage <= 40) hint = 'Plenty of capacity left—consider adding one helpful habit.';
+    else if (max - min >= 3) hint = 'One suit dominates—check if that’s intentional this week.';
+
+    box.innerHTML = `
+      <div class="summary-top">
+        <div class="summary-title">Weekly Summary</div>
+        <div class="summary-stats">
+          <span class="stat"><span class="k">Time:</span> ${totalMins}m (${totalHours}h)</span>
+          <span class="stat"><span class="k">Capacity:</span> ${capHrs}h</span>
+          <span class="stat"><span class="k">Usage:</span> <span class="badge-usage ${usageClass}">${usage}%</span></span>
+        </div>
+      </div>
+      <div class="summary-suits">
+        <span class="suit-pill">♠ <span class="count">${counts.spades}</span></span>
+        <span class="suit-pill">♣ <span class="count">${counts.clubs}</span></span>
+        <span class="suit-pill">♥ <span class="count">${counts.hearts}</span></span>
+        <span class="suit-pill">♦ <span class="count">${counts.diamonds}</span></span>
+      </div>
+      <div class="summary-hint">${hint}</div>
+    `;
+  }
+
+  function deleteTaskById(taskId){
     try {
-      generatePlan();
-      showSection('plan');
+      if (!state?.plan?.tasks) return;
+      state.plan.tasks = state.plan.tasks.filter(t => t.id !== taskId);
+      save(); renderPlan();
     } catch (err) {
-      console.error('[GeneratePlan] Unhandled error:', err);
-      alert('Something went wrong while generating the plan. Please refresh and try again.');
+      console.error('[DeleteTask] error:', err);
+      alert('Could not delete the task. Please refresh and try again.');
     }
-  });
+  }
 
   function generatePlan(){
-    // Ensure deck exists
     buildDeck();
 
-    // Use existing week start or compute new Monday (local)
-    const weekStart   = state.draw?.weekStart || fmtLocalDate(startOfWeek(new Date()));
+    const weekStart = state.draw?.weekStart || fmtLocalDate(startOfWeek(new Date()));
     const selectedIds = Array.isArray(state.draw?.selected) ? state.draw.selected : [];
 
-    // Guard: must have selected cards
     if (!selectedIds.length) {
       alert('No cards selected for this week yet.\n\nGo to Weekly Draw and click “🎴 Draw my cards”, then try “Generate Weekly Plan”.');
       showSection('draw');
       return;
     }
 
-    // Build tasks from selected cards
     const selected = state.deck.filter(c => selectedIds.includes(c.id));
     const tasks = [];
 
     selected.forEach(c => {
       if (['K','Q'].includes(c.rank)) {
-        // Strategic: one milestone on Wednesday
-        const date = fmtLocalDate(addDays(parseLocalDate(weekStart), 2)); // Mon=0 -> Wed=2
+        const date = fmtLocalDate(addDays(parseLocalDate(weekStart), 2)); // Wed
         tasks.push({
           id: 't-'+c.id+'-WED',
           date,
@@ -503,12 +331,10 @@ function renderDraw(){
           status: 'planned'
         });
       } else {
-        // Habits: schedule by cadence
         let days = [];
-        if (c.cadence === 'daily')   days = [0,1,2,3,4]; // Mon–Fri
-        else if (c.cadence === '2x') days = [1,4];       // Tue, Fri
-        else                         days = [2];         // Weekly -> Wed
-
+        if (c.cadence === 'daily')      days = [0,1,2,3,4];
+        else if (c.cadence === '2x')    days = [1,4];
+        else                             days = [2];
         days.forEach(d => {
           tasks.push({
             id: 't-'+c.id+'-'+d,
@@ -525,409 +351,205 @@ function renderDraw(){
 
     state.plan = { weekStart, tasks };
     save();
-    
-// ----- Weekly Draw renderer (known-good) -----
-function renderDraw(){
-  // (Re)build deck so UI reflects latest Aces/Strategics/Habits
-  if (typeof buildDeck === 'function') buildDeck();
-
-  const root = document.querySelector('#drawResult');
-  if (!root) return;
-
-  root.innerHTML = '';
-
-  // Selected IDs (if any)
-  const selectedIds =
-    (state && state.draw && Array.isArray(state.draw.selected))
-      ? state.draw.selected
-      : [];
-
-  // Whole deck (if any)
-  const deck =
-    (state && Array.isArray(state.deck))
-      ? state.deck
-      : [];
-
-  // If nothing drawn yet, show a friendly hint and (optionally) the empty-deck helper visibility
-  if (!selectedIds.length) {
-    // If you installed the empty-deck callout earlier, keep it in sync:
-    const poolNow = deck.filter(c => c && c.rank !== 'A');
-    if (typeof showEmptyDeckMessage === 'function') {
-      showEmptyDeckMessage(poolNow.length === 0);
-    }
-    root.innerHTML = '<div class="muted">No cards selected yet. Click "Draw my cards".</div>';
-    return;
-  }
-
-  // Render selected cards
-  const selected = deck.filter(c => selectedIds.includes(c.id));
-  const renderCard = (c) => `
-    <div class="card">
-      <div class="meta">
-        <span class="suit-badge ${suitMeta[c.suit].color}">
-          ${suitMeta[c.suit].icon} ${c.rank}
-        </span>
-      </div>
-      <div class="title">${c.title}</div>
-    </div>`;
-
-  root.innerHTML = selected.length
-    ? selected.map(renderCard).join('')
-    : '<div class="muted">No cards selected yet. Click "Draw my cards".</div>';
-}
-
-// ----- Weekly Draw renderer (known-good) -----
-function renderDraw(){
-  // Keep deck fresh so UI reflects latest Aces/Strategics/Habits
-  if (typeof buildDeck === 'function') buildDeck();
-
-  const root = document.querySelector('#drawResult');
-  if (!root) return;
-
-  root.innerHTML = '';
-
-  // Selection (if any)
-  const selectedIds =
-    (state && state.draw && Array.isArray(state.draw.selected))
-      ? state.draw.selected
-      : [];
-
-  // Full deck (if any)
-  const deck =
-    (state && Array.isArray(state.deck))
-      ? state.deck
-      : [];
-
-  // If nothing drawn yet, show a friendly hint + sync empty-deck callout if present
-  if (!selectedIds.length) {
-    const poolNow = deck.filter(c => c && c.rank !== 'A');
-    if (typeof showEmptyDeckMessage === 'function') {
-      showEmptyDeckMessage(poolNow.length === 0);
-    }
-    root.innerHTML = '<div class="muted">No cards selected yet. Click "Draw my cards".</div>';
-    return;
-  }
-
-  // Render selected cards
-  const selected = deck.filter(c => selectedIds.includes(c.id));
-  const renderCard = (c) => `
-    <div class="card">
-      <div class="meta">
-        <span class="suit-badge ${suitMeta[c.suit].color}">
-          ${suitMeta[c.suit].icon} ${c.rank}
-        </span>
-      </div>
-      <div class="title">${c.title}</div>
-    </div>`;
-
-  root.innerHTML = selected.length
-    ? selected.map(renderCard).join('')
-    : '<div class="muted">No cards selected yet. Click "Draw my cards".</div>';
-}
-
     renderPlan();
   }
 
-  // ---------- Render Weekly Plan (drag/move + Alt-copy + inline edit) ----------
+  function renderPlan(){
+    const root = $('#planGrid');
+    if(!root) return;
+    root.innerHTML = '';
 
-// ----- Weekly Summary (Option D) -----
-function renderPlanSummary(){
-  const box = document.getElementById('planSummary');
-  if (!box) return;
+    const weekStart = state.plan.weekStart || fmtLocalDate(startOfWeek(new Date()));
+    const tasks = state.plan.tasks || [];
 
-  const plan = (state.plan && Array.isArray(state.plan.tasks)) ? state.plan : { tasks: [] };
-  const tasks = plan.tasks || [];
+    // Build day buckets Mon..Sun
+    const perDay = [0,1,2,3,4,5,6].map(i => ({
+      date: fmtLocalDate(addDays(parseLocalDate(weekStart), i)),
+      tasks: []
+    }));
 
-  // Totals
-  const totalMins = tasks.reduce((a,b)=> a + (b.duration || 0), 0);
-  const totalHours = Math.round((totalMins/60) * 10) / 10;
+    // Place tasks
+    tasks.forEach(t => {
+      const dt = parseLocalDate(t.date);
+      const day = dt.getDay();           // Sun=0..Sat=6
+      const idx = (day + 6) % 7;         // Mon=0..Sun=6
+      perDay[idx].tasks.push(t);
+    });
 
-  const capHrs = state.settings && state.settings.weeklyCapacityHours ? state.settings.weeklyCapacityHours : 8;
-  const capMins = capHrs * 60;
-  const usagePct = capMins ? Math.round((totalMins / capMins) * 100) : 0;
+    // Capacity
+    const totalMins = tasks.reduce((a,b)=>a+(b.duration||0),0);
+    const capMins = (state.settings.weeklyCapacityHours||8)*60;
+    const usage = capMins ? Math.round((totalMins/capMins)*100) : 0;
+    const banner = `Capacity used: ${Math.round(totalMins/60)}h (${usage}%) of ${state.settings.weeklyCapacityHours||8}h`;
+    const capEl = $('#capacityBanner');
+    if (capEl) capEl.innerText = banner;
 
-  // Counts by suit
-  const suitsList = ['spades','clubs','hearts','diamonds'];
-  const counts = { spades:0, clubs:0, hearts:0, diamonds:0 };
-  tasks.forEach(t => { if (counts.hasOwnProperty(t.suit)) counts[t.suit]++; });
-
-  // Usage badge class
-  let usageClass = 'badge-ok';
-  if (usagePct >= 90) usageClass = 'badge-high';
-  else if (usagePct >= 70) usageClass = 'badge-warn';
-
-  // Hint logic
-  const maxCount = Math.max(counts.spades, counts.clubs, counts.hearts, counts.diamonds);
-  const minCount = Math.min(counts.spades, counts.clubs, counts.hearts, counts.diamonds);
-  let hint = 'Looks balanced. Aim for small, meaningful steps.';
-  if (usagePct >= 95) hint = 'This looks heavy—consider reducing durations or moving a card.';
-  else if (usagePct <= 40) hint = 'Plenty of capacity left—consider adding one helpful habit.';
-  else if (maxCount - minCount >= 3) hint = 'One suit dominates—check if that’s intentional this week.';
-
-  // Suit icons
-  const suitIcon = {
-    spades: '♠', clubs: '♣', hearts: '♥', diamonds: '♦'
-  };
-
-  box.innerHTML = `
-    <div class="summary-top">
-      <div class="summary-title">Weekly Summary</div>
-      <div class="summary-stats">
-        <span class="stat"><span class="k">Time:</span> ${totalMins}m (${totalHours}h)</span>
-        <span class="stat"><span class="k">Capacity:</span> ${capHrs}h</span>
-        <span class="stat">
-          <span class="k">Usage:</span> 
-          <span class="badge-usage ${usageClass}">${usagePct}%</span>
-        </span>
-      </div>
-    </div>
-
-    <div class="summary-suits">
-      <span class="suit-pill">${suitIcon.spades} <span class="count">${counts.spades}</span></span>
-      <span class="suit-pill">${suitIcon.clubs} <span class="count">${counts.clubs}</span></span>
-      <span class="suit-pill">${suitIcon.hearts} <span class="count">${counts.hearts}</span></span>
-      <span class="suit-pill">${suitIcon.diamonds} <span class="count">${counts.diamonds}</span></span>
-    </div>
-
-    <div class="summary-hint">${hint}</div>
-  `;
-}
-
-
-// ----- Delete Task helper (keep this if not already present) -----
-function deleteTaskById(taskId){
-  try {
-    if (!state || !state.plan || !Array.isArray(state.plan.tasks)) return;
-    const before = state.plan.tasks.length;
-    state.plan.tasks = state.plan.tasks.filter(t => t.id !== taskId);
-    const after = state.plan.tasks.length;
-    if (before !== after) {
-      save();
-      renderPlan();
-    }
-  } catch (err) {
-    console.error('[DeleteTask] error:', err);
-    alert('Could not delete the task. Please refresh and try again.');
-  }
-}
-
-// ----- KNOWN-GOOD Weekly Plan renderer (Delete + DnD + Alt-copy + inline edit) -----
-function renderPlan(){
-  const root = $('#planGrid');
-  if(!root) return;
-  root.innerHTML = '';
-
-  const weekStart = state.plan.weekStart || fmtLocalDate(startOfWeek(new Date()));
-  const tasks = state.plan.tasks || [];
-
-  // Build day buckets Mon..Sun
-  const perDay = [0,1,2,3,4,5,6].map(i => ({
-    date: fmtLocalDate(addDays(parseLocalDate(weekStart), i)),
-    tasks: []
-  }));
-
-  // Place tasks in buckets
-  tasks.forEach(t => {
-    const dt = parseLocalDate(t.date);
-    const day = dt.getDay();           // Sun=0..Sat=6
-    const idx = (day + 6) % 7;         // Mon=0..Sun=6
-    perDay[idx].tasks.push(t);
-  });
-
-  // Capacity banner
-  const totalMins = tasks.reduce((a,b)=>a+(b.duration||0),0);
-  const capMins = (state.settings.weeklyCapacityHours||8)*60;
-  const usage = capMins ? Math.round((totalMins/capMins)*100) : 0;
-  const banner = `Capacity used: ${Math.round(totalMins/60)}h (${usage}%) of ${state.settings.weeklyCapacityHours||8}h`;
-  const capEl = $('#capacityBanner');
-  if (capEl) capEl.innerText = banner;
-
-  // (Optional) Weekly Summary Card — safe guard (no freeze if not present)
-  if (typeof renderPlanSummary === 'function') {
+    // Summary card (guarded)
     try { renderPlanSummary(); } catch(e){ console.error('[Summary] render error:', e); }
-  }
 
-  // Render columns and tasks
-  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  perDay.forEach((d, i) => {
-    const col = document.createElement('div');
-    col.className = 'day-col';
-    col.dataset.date = d.date; // used by drop handler
-    col.innerHTML = `<h3>${dayNames[i]} <span class="small">${d.date}</span></h3>`;
+    // Render columns
+    const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    perDay.forEach((d, i) => {
+      const col = document.createElement('div');
+      col.className = 'day-col';
+      col.dataset.date = d.date;
+      col.innerHTML = `<h3>${dayNames[i]} <span class="small">${d.date}</span></h3>`;
 
-    d.tasks.forEach(t => {
-      const node = document.createElement('div');
-      node.className = 'task';
-      node.setAttribute('draggable', 'true');
-      node.dataset.taskId = t.id;
+      d.tasks.forEach(t => {
+        const node = document.createElement('div');
+        node.className = 'task';
+        node.setAttribute('draggable', 'true');
+        node.dataset.taskId = t.id;
 
-      node.innerHTML = `
-        <div class="title" data-task-id="${t.id}" title="Click to edit title">${t.title}</div>
-        <div class="meta">
-          <span class="badge ${'suit-'+t.suit}">${suitMeta[t.suit].icon} ${t.rank}</span>
-          <span class="badge duration-badge" data-task-id="${t.id}" title="Click to edit minutes">${t.duration}m</span>
-          <button data-done="${t.id}" class="task-btn">Mark done</button>
-          <button data-delete="${t.id}" class="task-btn danger-btn" title="Delete this task">Delete</button>
-        </div>`;
-      col.appendChild(node);
+        node.innerHTML = `
+          <div class="title" data-task-id="${t.id}" title="Click to edit title">${t.title}</div>
+          <div class="meta">
+            <span class="badge ${'suit-'+t.suit}">${suitMeta[t.suit].icon} ${t.rank}</span>
+            <span class="badge duration-badge" data-task-id="${t.id}" title="Click to edit minutes">${t.duration}m</span>
+            <button data-done="${t.id}" class="task-btn">Mark done</button>
+            <button data-delete="${t.id}" class="task-btn danger-btn" title="Delete this task">Delete</button>
+          </div>`;
+        col.appendChild(node);
+      });
+
+      root.appendChild(col);
     });
 
-    root.appendChild(col);
+    // Delegated actions (Delete / Done)
+    root.onclick = (e) => {
+      const delId = e.target?.getAttribute?.('data-delete');
+      if (delId) {
+        const ok = confirm('Delete this task from the week? This cannot be undone.');
+        if (ok) deleteTaskById(delId);
+        return;
+      }
+      const doneId = e.target?.getAttribute?.('data-done');
+      if (doneId) {
+        const t = (state.plan.tasks||[]).find(x=>x.id===doneId);
+        if (t){ t.status = t.status==='done'?'planned':'done'; save(); renderPlan(); }
+        return;
+      }
+    };
+
+    // Drag & Drop – bind once
+    if (!_dndBound) {
+      _dndBound = true;
+
+      document.addEventListener('keydown', (e)=>{ if (e.key==='Alt'){ _copyMode=true;  document.body.classList.add('copy-mode'); }});
+      document.addEventListener('keyup',   (e)=>{ if (e.key==='Alt'){ _copyMode=false; document.body.classList.remove('copy-mode'); }});
+
+      root.addEventListener('dragstart', (e)=>{
+        const taskEl = e.target.closest('.task');
+        if (!taskEl) return;
+        e.dataTransfer.effectAllowed = 'copyMove';
+        const isCopy = _copyMode || !!e.altKey;
+        e.dataTransfer.setData('text/task-id', taskEl.dataset.taskId);
+        e.dataTransfer.setData('text/copy', isCopy ? '1' : '0');
+        if (isCopy) taskEl.classList.add('copying');
+        taskEl.classList.add('dragging');
+      });
+      root.addEventListener('dragend', (e)=>{
+        const taskEl = e.target.closest('.task');
+        if (taskEl) { taskEl.classList.remove('dragging'); taskEl.classList.remove('copying'); }
+      });
+
+      root.addEventListener('dragover', (e)=>{
+        const col = e.target.closest('.day-col');
+        if (!col) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = _copyMode ? 'copy' : 'move';
+        col.classList.add('drag-over');
+      });
+      root.addEventListener('dragleave', (e)=>{
+        const col = e.target.closest('.day-col');
+        if (col) col.classList.remove('drag-over');
+      });
+
+      root.addEventListener('drop', (e)=>{
+        const col = e.target.closest('.day-col');
+        if (!col) return;
+        e.preventDefault();
+        col.classList.remove('drag-over');
+
+        const taskId = e.dataTransfer.getData('text/task-id');
+        const isCopy = (e.dataTransfer.getData('text/copy') === '1') || _copyMode;
+        if (!taskId) return;
+
+        const newDate = col.dataset.date;
+        const t = (state.plan.tasks||[]).find(x => x.id === taskId);
+        if (!t) return;
+
+        if (isCopy) {
+          const newId = 't-' + Date.now() + '-' + Math.floor(Math.random()*1e6);
+          const clone = { ...t, id: newId, date: newDate, status:'planned' };
+          state.plan.tasks.push(clone);
+        } else {
+          if (t.date !== newDate) t.date = newDate;
+        }
+        save(); renderPlan();
+      });
+
+      // Inline edit: title
+      root.addEventListener('click', (e)=>{
+        const titleEl = e.target.closest('.title');
+        if (!titleEl) return;
+        const taskId = titleEl.dataset.taskId;
+        const t = (state.plan.tasks||[]).find(x => x.id === taskId);
+        if (!t) return;
+
+        const input = document.createElement('input');
+        input.className = 'inline-edit';
+        input.type = 'text';
+        input.value = t.title;
+        titleEl.replaceWith(input);
+        input.focus(); input.select();
+
+        const commit = () => { t.title = (input.value.trim() || t.title); save(); renderPlan(); };
+        const cancel = () => renderPlan();
+
+        input.addEventListener('keydown', (ev)=>{ if (ev.key==='Enter') commit(); else if (ev.key==='Escape') cancel(); });
+        input.addEventListener('blur', commit);
+      });
+
+      // Inline edit: duration
+      root.addEventListener('click', (e)=>{
+        const durEl = e.target.closest('.duration-badge');
+        if (!durEl) return;
+        const taskId = durEl.dataset.taskId;
+        const t = (state.plan.tasks||[]).find(x => x.id === taskId);
+        if (!t) return;
+
+        const input = document.createElement('input');
+        input.className = 'inline-edit';
+        input.type = 'number'; input.min='5'; input.max='240'; input.step='5';
+        input.value = t.duration || 20;
+        durEl.replaceWith(input);
+        input.focus(); input.select();
+
+        const commit = () => {
+          const val = parseInt(input.value,10);
+          if (!isNaN(val) && val > 0) { t.duration = Math.max(5, Math.min(240, val)); save(); renderPlan(); }
+          else { renderPlan(); }
+        };
+        const cancel = () => renderPlan();
+
+        input.addEventListener('keydown', (ev)=>{ if (ev.key==='Enter') commit(); else if (ev.key==='Escape') cancel(); });
+        input.addEventListener('blur', commit);
+      });
+    }
+  }
+
+  // Generate Plan button
+  const genPlanBtn = $('#genPlanBtn');
+  if (genPlanBtn) genPlanBtn.addEventListener('click', ()=>{
+    try { generatePlan(); showSection('plan'); }
+    catch (err) {
+      console.error('[Plan] error:', err);
+      alert('Something went wrong while generating the plan. Please refresh and try again.');
+    }
   });
 
-  // ----- Actions via delegation (Delete / Done) -----
-  root.onclick = (e) => {
-    // DELETE
-    const delId = e.target && e.target.getAttribute && e.target.getAttribute('data-delete');
-    if (delId) {
-      const ok = confirm('Delete this task from the week? This cannot be undone.');
-      if (ok) deleteTaskById(delId);
-      return;
-    }
-    // DONE toggle
-    const doneId = e.target && e.target.getAttribute && e.target.getAttribute('data-done');
-    if (doneId) {
-      const t = (state.plan.tasks||[]).find(x=>x.id===doneId);
-      if(t){ t.status = t.status==='done'?'planned':'done'; save(); renderPlan(); }
-      return;
-    }
-  };
-
-  // ----- Drag & Drop (bind once) -----
-  if (!_dndBound) {
-    _dndBound = true;
-
-    // Alt copy-mode flags
-    document.addEventListener('keydown', (e) => { if (e.key === 'Alt') { _copyMode = true;  document.body.classList.add('copy-mode'); }});
-    document.addEventListener('keyup',   (e) => { if (e.key === 'Alt') { _copyMode = false; document.body.classList.remove('copy-mode'); }});
-
-    // DRAG START/END
-    root.addEventListener('dragstart', (e) => {
-      const taskEl = e.target.closest('.task');
-      if (!taskEl) return;
-      e.dataTransfer.effectAllowed = 'copyMove';
-      const isCopy = _copyMode || !!e.altKey;
-      e.dataTransfer.setData('text/task-id', taskEl.dataset.taskId);
-      e.dataTransfer.setData('text/copy', isCopy ? '1' : '0');
-      if (isCopy) taskEl.classList.add('copying');
-      taskEl.classList.add('dragging');
-    });
-    root.addEventListener('dragend', (e) => {
-      const taskEl = e.target.closest('.task');
-      if (taskEl) { taskEl.classList.remove('dragging'); taskEl.classList.remove('copying'); }
-    });
-
-    // DRAG OVER / LEAVE
-    root.addEventListener('dragover', (e) => {
-      const col = e.target.closest('.day-col');
-      if (!col) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = _copyMode ? 'copy' : 'move';
-      col.classList.add('drag-over');
-    });
-    root.addEventListener('dragleave', (e) => {
-      const col = e.target.closest('.day-col');
-      if (col) col.classList.remove('drag-over');
-    });
-
-    // DROP
-    root.addEventListener('drop', (e) => {
-      const col = e.target.closest('.day-col');
-      if (!col) return;
-      e.preventDefault();
-      col.classList.remove('drag-over');
-
-      const taskId = e.dataTransfer.getData('text/task-id');
-      const isCopy = (e.dataTransfer.getData('text/copy') === '1') || _copyMode;
-      if (!taskId) return;
-
-      const newDate = col.dataset.date;
-      const t = (state.plan.tasks||[]).find(x => x.id === taskId);
-      if (!t) return;
-
-      if (isCopy) {
-        const newId = 't-' + Date.now() + '-' + Math.floor(Math.random() * 1e6);
-        const clone = { ...t, id: newId, date: newDate, status: 'planned' };
-        state.plan.tasks.push(clone);
-      } else {
-        if (t.date !== newDate) t.date = newDate;
-      }
-
-      save();
-      renderPlan();
-    });
-
-    // ----- Inline Edit: Title -----
-    root.addEventListener('click', (e) => {
-      const titleEl = e.target.closest('.title');
-      if (!titleEl) return;
-      const taskId = titleEl.dataset.taskId;
-      const t = (state.plan.tasks||[]).find(x => x.id === taskId);
-      if (!t) return;
-
-      const input = document.createElement('input');
-      input.className = 'inline-edit';
-      input.type = 'text';
-      input.value = t.title;
-
-      titleEl.replaceWith(input);
-      input.focus(); input.select();
-
-      const commit = () => { t.title = (input.value.trim() || t.title); save(); renderPlan(); };
-      const cancel = () => renderPlan();
-
-      input.addEventListener('keydown', (ev) => {
-        if (ev.key==='Enter') commit();
-        else if (ev.key==='Escape') cancel();
-      });
-      input.addEventListener('blur', commit);
-    });
-
-    // ----- Inline Edit: Duration -----
-    root.addEventListener('click', (e) => {
-      const durEl = e.target.closest('.duration-badge');
-      if (!durEl) return;
-
-      const taskId = durEl.dataset.taskId;
-      const t = (state.plan.tasks||[]).find(x => x.id === taskId);
-      if (!t) return;
-
-      const input = document.createElement('input');
-      input.className = 'inline-edit';
-      input.type = 'number';
-      input.min = '5'; input.max = '240'; input.step = '5';
-      input.value = t.duration || 20;
-
-      durEl.replaceWith(input);
-      input.focus(); input.select();
-
-      const commit = () => {
-        const val = parseInt(input.value, 10);
-        if (!isNaN(val) && val > 0) { t.duration = Math.max(5, Math.min(240, val)); save(); renderPlan(); }
-        else { renderPlan(); }
-      };
-      const cancel = () => renderPlan();
-
-      input.addEventListener('keydown', (ev) => {
-        if (ev.key==='Enter') commit();
-        else if (ev.key==='Escape') cancel();
-      });
-      input.addEventListener('blur', commit);
-    });
-  }
-}
-
-      // MARK DONE toggle
-      root.addEventListener('click', (e) => {
-        const id = e.target.getAttribute && e.target.getAttribute('data-done');
-        if(!id) return;
-        const t = (state.plan.tasks||[]).find(x=>x.id===id);
-        if(t){ t.status = t.status==='done'?'planned':'done'; save(); renderPlan(); }
-      });
-    }
-  }
-
-  // ---------- Today ----------
+  // ========= Today (minimal) =========
   function renderToday(){
     const root = $('#todayList');
     if(!root) return;
@@ -935,7 +557,7 @@ function renderPlan(){
     const today = fmtLocalDate(new Date());
     const tasks = (state.plan.tasks||[]).filter(t => t.date === today);
 
-    if(tasks.length===0){ root.innerHTML = '<div class="muted">No tasks scheduled today.</div>'; return; }
+    if(!tasks.length){ root.innerHTML = '<div class="muted">No tasks scheduled today.</div>'; return; }
 
     tasks.forEach(t => {
       const row = document.createElement('div');
@@ -945,42 +567,37 @@ function renderPlan(){
           <div>${t.title}</div>
           <div class="small">${suitMeta[t.suit].icon} ${t.rank} · ${t.duration}m</div>
         </div>
-        <div><button data-done="${t.id}">${t.status==='done'?'Done':'Mark done'}</button></div>
-      `;
+        <div><button data-done="${t.id}">${t.status==='done'?'Done':'Mark done'}</button></div>`;
       root.appendChild(row);
     });
 
     root.addEventListener('click', (e)=>{
-      const id = e.target.getAttribute && e.target.getAttribute('data-done');
+      const id = e.target.getAttribute?.('data-done');
       if(!id) return;
       const t = (state.plan.tasks||[]).find(x=>x.id===id);
       if(t){ t.status = t.status==='done'?'planned':'done'; save(); renderToday(); }
     });
   }
 
-  // ---------- Deck ----------
+  // ========= Deck / Review / Insights (minimal renderers) =========
   function renderDeck(){
     buildDeck();
-    const root = $('#deckView');
-    if(!root) return;
+    const root = $('#deckView'); if(!root) return;
     root.innerHTML = '';
     suits.forEach(s => {
       const box = document.createElement('div');
       box.className = 'card';
       box.innerHTML = `<h3>${suitMeta[s].icon} ${suitMeta[s].name}</h3>`;
       const list = state.deck.filter(c=>c.suit===s);
-      if(list.length===0){
-        box.innerHTML += '<div class="muted">No cards yet.</div>';
-      } else {
+      if(!list.length){ box.innerHTML += '<div class="muted">No cards yet.</div>'; }
+      else {
         list.forEach(c => {
-          const metaColor = `suit-badge ${suitMeta[c.suit].color}`;
           const chip = document.createElement('div');
           chip.className = 'card-chip';
           chip.innerHTML = `
-            <div class="meta"><span class="${metaColor}">${suitMeta[c.suit].icon} ${c.rank}</span></div>
+            <div class="meta"><span class="suit-badge ${suitMeta[c.suit].color}">${suitMeta[c.suit].icon} ${c.rank}</span></div>
             <div class="title">${c.title}</div>
-            <div class="small">${c.due?('Due '+c.due):''}</div>
-          `;
+            <div class="small">${c.due?('Due '+c.due):''}</div>`;
           box.appendChild(chip);
         });
       }
@@ -988,66 +605,34 @@ function renderPlan(){
     });
   }
 
-  // ---------- Export ----------
-  $('#exportBtn')?.addEventListener('click', ()=>{
-    buildDeck();
-    const blob = new Blob([JSON.stringify({state}, null, 2)], {type:'application/json'});
-    const url  = URL.createObjectURL(blob);
-    const link = $('#downloadLink');
-    link.href = url;
-    link.download = 'solvent-deck-export.json';
-    link.style.display = 'inline-block';
-    link.textContent = 'Download export';
-  });
-
-  // ---------- Review ----------
   function renderReview(){
-    const root = $('#reviewView');
-    if(!root) return;
+    const root = $('#reviewView'); if(!root) return;
     root.innerHTML = '';
     const tasks = state.plan.tasks||[];
-    if(tasks.length===0){ root.innerHTML = '<div class="muted">No plan yet.</div>'; return; }
-
+    if(!tasks.length){ root.innerHTML = '<div class="muted">No plan yet.</div>'; return; }
     const done = tasks.filter(t=>t.status==='done').length;
     const total = tasks.length;
     const pct = total? Math.round((done/total)*100) : 0;
-
     root.innerHTML = `
       <div class="card">
         <div>Completion: <span class="badge ${pct>=80?'good':pct>=60?'warn':'danger'}">${pct}%</span></div>
         <div class="small">${done}/${total} tasks completed</div>
-      </div>
-      <hr class="sep"/>
-      <div class="grid grid-2">
-        ${suits.map(s=>{
-          const sTasks = tasks.filter(t=>t.suit===s);
-          const sDone  = sTasks.filter(t=>t.status==='done').length;
-          const sPct   = sTasks.length? Math.round((sDone/sTasks.length)*100) : 0;
-          return `<div class="card"><strong>${suitMeta[s].icon} ${suitMeta[s].name}</strong><div class="small">${sDone}/${sTasks.length} · ${sPct}%</div></div>`;
-        }).join('')}
-      </div>
-    `;
+      </div>`;
   }
 
-  // ---------- Insights ----------
   function renderInsights(){
-    const root = $('#insightsView');
-    if(!root) return;
+    const root = $('#insightsView'); if(!root) return;
     root.innerHTML = '';
     const tasks = state.plan.tasks||[];
-    if(tasks.length===0){ root.innerHTML = '<div class="muted">No data yet.</div>'; return; }
-
+    if(!tasks.length){ root.innerHTML = '<div class="muted">No data yet.</div>'; return; }
     const byTitle = {};
     tasks.forEach(t=>{
-      byTitle[t.title] = byTitle[t.title] || { total:0, done:0 };
+      byTitle[t.title] = byTitle[t.title]||{ total:0, done:0 };
       byTitle[t.title].total++;
       if(t.status==='done') byTitle[t.title].done++;
     });
-    const rows = Object.entries(byTitle)
-      .map(([title, v])=>({ title, ratio: v.done/(v.total||1), total:v.total }))
-      .sort((a,b)=>b.ratio-a.ratio)
-      .slice(0,5);
-
+    const rows = Object.entries(byTitle).map(([title, v])=>({ title, ratio: v.done/(v.total||1), total:v.total }))
+      .sort((a,b)=>b.ratio-a.ratio).slice(0,5);
     const list = document.createElement('div');
     list.className = 'card';
     list.innerHTML = `<h3>Most effective cards</h3>${
@@ -1056,13 +641,12 @@ function renderPlan(){
     root.appendChild(list);
   }
 
-  // ---------- Settings ----------
+  // ========= Settings =========
   $('#saveSettingsBtn')?.addEventListener('click', ()=>{
     const cap = $('#capHours');
     const v = parseInt(cap && cap.value || 8,10);
     state.settings.weeklyCapacityHours = v;
-    save();
-    alert('Settings saved.');
+    save(); alert('Settings saved.');
   });
 
   $('#resetBtn')?.addEventListener('click', ()=>{
@@ -1072,7 +656,7 @@ function renderPlan(){
     location.reload();
   });
 
-  // ---------- Seeder (for demos) ----------
+  // ========= Seeder =========
   function seedExample(){
     state.aces.spades   = { title:'Lead solvency psychology as a field', metrics:['2 papers','1 book','5 talks'] };
     state.aces.clubs    = { title:'Sustain a high‑energy body',          metrics:['7.5h sleep','150 workouts/yr'] };
@@ -1122,89 +706,6 @@ function renderPlan(){
     save();
   }
 
-// ===== Onboarding Tour (Option A) =====
-(function initTour(){
-  const overlay = $('#tourOverlay');
-  if (!overlay) return;
-
-  const closeBtn     = $('#tourCloseBtn');
-  const openBtn      = $('#openTourBtn');
-  const dontShow     = $('#tourDontShow');
-  const dots         = Array.from(overlay.querySelectorAll('[data-dot]'));
-  const steps        = Array.from(overlay.querySelectorAll('.tour-step'));
-  const prevBtns     = Array.from(overlay.querySelectorAll('[data-tour-prev]'));
-  const next1        = $('#tourNext1');
-  const next2        = $('#tourNext2');
-  const next3        = $('#tourNext3');
-  const finish       = $('#tourFinishBtn');
-
-  let current = 1;
-  let lastFocused = null;
-
-  function show(step){
-    current = step;
-    steps.forEach(s => s.hidden = (parseInt(s.dataset.step,10) !== current));
-    dots.forEach(d => d.classList.toggle('active', parseInt(d.dataset.dot,10) === current));
-  }
-  function openTour(auto=false){
-    // If auto, check local flag
-    const seen = localStorage.getItem('solventTourSeen') === '1';
-    if (auto && seen) return;
-
-    overlay.setAttribute('aria-hidden', 'false');
-    lastFocused = document.activeElement;
-    // Focus first actionable button in the step
-    setTimeout(()=> {
-      const firstBtn = overlay.querySelector('.tour-step:not([hidden]) .tour-actions button, .tour-close');
-      if (firstBtn) firstBtn.focus();
-    }, 0);
-    trapFocus(true);
-    show(1);
-  }
-  function closeTour(){
-    overlay.setAttribute('aria-hidden', 'true');
-    trapFocus(false);
-    if (dontShow && dontShow.checked) localStorage.setItem('solventTourSeen','1');
-    if (lastFocused && document.body.contains(lastFocused)) lastFocused.focus();
-  }
-  function trapFocus(enable){
-    if (!enable) {
-      document.removeEventListener('keydown', handleKeys);
-      return;
-    }
-    document.addEventListener('keydown', handleKeys);
-  }
-  function handleKeys(e){
-    if (e.key === 'Escape') { e.preventDefault(); closeTour(); return; }
-    if (e.key !== 'Tab') return;
-
-    const focusables = overlay.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-    const f = Array.from(focusables).filter(el => !el.hasAttribute('hidden') && el.offsetParent !== null);
-    if (!f.length) return;
-
-    const first = f[0], last = f[f.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-  }
-
-  // Wire buttons
-  closeBtn?.addEventListener('click', closeTour);
-  openBtn?.addEventListener('click', ()=> openTour(false));
-  prevBtns.forEach(b => b.addEventListener('click', ()=> show(Math.max(1, current - 1))));
-  next1?.addEventListener('click', ()=> show(2));
-  next2?.addEventListener('click', ()=> show(3));
-  next3?.addEventListener('click', ()=> show(4));
-  finish?.addEventListener('click', closeTour);
-
-  // Click outside modal closes (optional, accessible-friendly)
-  overlay.addEventListener('click', (e)=>{
-    if (e.target === overlay) closeTour();
-  });
-
-  // Open automatically on first visit (after initial paint)
-  window.requestAnimationFrame(()=> openTour(true));
-})();
-
-  // ---------- First render ----------
+  // ========= First render =========
   showSection('welcome');
 })();
