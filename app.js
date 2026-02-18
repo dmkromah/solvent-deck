@@ -192,7 +192,7 @@
       const m = $('#strategic-'+s+'-'+i+'-mins');
       if (t) t.addEventListener('input', (e)=>{ state.strategics[s][i].title = e.target.value; save(); });
       if (d) d.addEventListener('change', (e)=>{ state.strategics[s][i].due = e.target.value; save(); });
-      if (m) d.addEventListener('change', (e)=>{ state.strategics[s][i].mins = parseInt(e.target.value||60,10); save(); });
+      if (m) m.addEventListener('change', (e)=>{ state.strategics[s][i].mins = parseInt(e.target.value||60,10); save(); });
     }));
   }
 
@@ -335,28 +335,40 @@
   if (drawBtn) drawBtn.addEventListener('click', drawWeekly);
 
   const genPlanBtn = $('#genPlanBtn');
-  if (genPlanBtn) genPlanBtn.addEventListener('click', ()=>{ generatePlan(); showSection('plan'); });
+  if (genPlanBtn) genPlanBtn.addEventListener('click', ()=>{
+    try {
+      generatePlan();
+      showSection('plan');
+    } catch (err) {
+      console.error('[GeneratePlan] Unhandled error:', err);
+      alert('Something went wrong while generating the plan. Please refresh and try again.');
+    }
+  });
 
-  // ---------- Plan: generate + render ----------
+  // ---------- Generate Plan (guarded, timezone-safe) ----------
   function generatePlan(){
+    // Ensure deck exists
     buildDeck();
 
+    // Use existing week start or compute new Monday (local)
     const weekStart = state.draw?.weekStart || fmtLocalDate(startOfWeek(new Date()));
     const selectedIds = Array.isArray(state.draw?.selected) ? state.draw.selected : [];
 
+    // Guard: must have selected cards
     if (!selectedIds.length) {
       alert('No cards selected for this week yet.\n\nGo to Weekly Draw and click “🎴 Draw my cards”, then try “Generate Weekly Plan”.');
       showSection('draw');
       return;
     }
 
+    // Build tasks from selected cards
     const selected = state.deck.filter(c => selectedIds.includes(c.id));
     const tasks = [];
 
     selected.forEach(c => {
       if (['K','Q'].includes(c.rank)) {
-        // Strategic milestone (Wed)
-        const date = fmtLocalDate(addDays(parseLocalDate(weekStart), 2));
+        // Strategic: one milestone on Wednesday
+        const date = fmtLocalDate(addDays(parseLocalDate(weekStart), 2)); // Mon=0 → Wed=2
         tasks.push({
           id: 't-'+c.id+'-WED',
           date,
@@ -367,11 +379,11 @@
           status: 'planned'
         });
       } else {
-        // Habits by cadence
+        // Habits: schedule by cadence
         let days = [];
-        if (c.cadence === 'daily') days = [0,1,2,3,4]; // Mon–Fri
-        else if (c.cadence === '2x') days = [1,4];     // Tue, Fri
-        else days = [2];                                // Weekly -> Wed
+        if (c.cadence === 'daily')      days = [0,1,2,3,4]; // Mon–Fri
+        else if (c.cadence === '2x')    days = [1,4];       // Tue, Fri
+        else                             days = [2];         // Weekly → Wed
 
         days.forEach(d => {
           tasks.push({
@@ -387,11 +399,13 @@
       }
     });
 
+    // Save + render
     state.plan = { weekStart, tasks };
     save();
     renderPlan();
   }
 
+  // ---------- Plan (drag/move + Alt‑copy + inline edit) ----------
   function renderPlan(){
     const root = $('#planGrid');
     if(!root) return;
@@ -400,12 +414,13 @@
     const weekStart = state.plan.weekStart || fmtLocalDate(startOfWeek(new Date()));
     const tasks = state.plan.tasks || [];
 
-    // Build day buckets Mon..Sun
+    // Build day buckets for Mon..Sun using local dates
     const perDay = [0,1,2,3,4,5,6].map(i => ({
       date: fmtLocalDate(addDays(parseLocalDate(weekStart), i)),
       tasks: []
     }));
 
+    // Place tasks in buckets
     tasks.forEach(t => {
       const dt = parseLocalDate(t.date);
       const day = dt.getDay();           // Sun=0..Sat=6
@@ -426,7 +441,7 @@
     perDay.forEach((d, i) => {
       const col = document.createElement('div');
       col.className = 'day-col';
-      col.dataset.date = d.date;
+      col.dataset.date = d.date; // used by drop handler
       col.innerHTML = `<h3>${dayNames[i]} <span class="small">${d.date}</span></h3>`;
 
       d.tasks.forEach(t => {
@@ -448,16 +463,22 @@
       root.appendChild(col);
     });
 
-    // Bind once — drag/drop + inline edit + copy mode
+    // Bind (once) — drag/drop + inline edit + copy mode
     if (!_dndBound) {
       _dndBound = true;
 
       // Alt toggles copy mode (visual hint)
       document.addEventListener('keydown', (e) => {
-        if (e.key === 'Alt') { _copyMode = true; document.body.classList.add('copy-mode'); }
+        if (e.key === 'Alt') {
+          _copyMode = true;
+          document.body.classList.add('copy-mode');
+        }
       });
       document.addEventListener('keyup', (e) => {
-        if (e.key === 'Alt') { _copyMode = false; document.body.classList.remove('copy-mode'); }
+        if (e.key === 'Alt') {
+          _copyMode = false;
+          document.body.classList.remove('copy-mode');
+        }
       });
 
       // DRAG START/END on tasks
@@ -467,6 +488,7 @@
 
         e.dataTransfer.effectAllowed = 'copyMove';
 
+        // snapshot copy state at drag start (also respect Alt at start)
         const isCopy = _copyMode || !!e.altKey;
         e.dataTransfer.setData('text/task-id', taskEl.dataset.taskId);
         e.dataTransfer.setData('text/copy', isCopy ? '1' : '0');
@@ -477,7 +499,10 @@
 
       root.addEventListener('dragend', (e) => {
         const taskEl = e.target.closest('.task');
-        if (taskEl) { taskEl.classList.remove('dragging'); taskEl.classList.remove('copying'); }
+        if (taskEl) {
+          taskEl.classList.remove('dragging');
+          taskEl.classList.remove('copying');
+        }
       });
 
       // DRAG OVER / LEAVE on columns
@@ -535,12 +560,21 @@
         input.type = 'text';
         input.value = t.title;
         titleEl.replaceWith(input);
-        input.focus(); input.select();
+        input.focus();
+        input.select();
 
-        const commit = () => { t.title = (input.value.trim() || t.title); save(); renderPlan(); };
+        const commit = () => {
+          const newVal = input.value.trim() || t.title;
+          t.title = newVal;
+          save();
+          renderPlan();
+        };
         const cancel = () => renderPlan();
 
-        input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') commit(); else if (ev.key === 'Escape') cancel(); });
+        input.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter') commit();
+          else if (ev.key === 'Escape') cancel();
+        });
         input.addEventListener('blur', commit);
       });
 
@@ -555,20 +589,32 @@
 
         const input = document.createElement('input');
         input.className = 'inline-edit';
-        input.type = 'number'; input.min = '5'; input.max = '240'; input.step = '5';
+        input.type = 'number';
+        input.min = '5';
+        input.max = '240';
+        input.step = '5';
         input.value = t.duration || 20;
 
         durEl.replaceWith(input);
-        input.focus(); input.select();
+        input.focus();
+        input.select();
 
         const commit = () => {
           const val = parseInt(input.value, 10);
-          if (!isNaN(val) && val > 0) { t.duration = Math.max(5, Math.min(240, val)); save(); renderPlan(); }
-          else { renderPlan(); }
+          if (!isNaN(val) && val > 0) {
+            t.duration = Math.max(5, Math.min(240, val));
+            save();
+            renderPlan();
+          } else {
+            renderPlan();
+          }
         };
         const cancel = () => renderPlan();
 
-        input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') commit(); else if (ev.key === 'Escape') cancel(); });
+        input.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter') commit();
+          else if (ev.key === 'Escape') cancel();
+        });
         input.addEventListener('blur', commit);
       });
 
@@ -600,261 +646,176 @@
           <div>${t.title}</div>
           <div class="small">${suitMeta[t.suit].icon} ${t.rank} · ${t.duration}m</div>
         </div>
-        <div><I’ve got you, Momo. Let’s stop the back‑and‑forth and put everything into a **single, clean, working baseline** so you’re back in control—no hunting for functions, no guessing.
+        <div><button data-done="${t.id}">${t.status==='done'?'Done':'Mark done'}</button></div>
+      `;
+      root.appendChild(row);
+    });
 
-Below is a **“golden state”** you can paste exactly as-is:
+    root.addEventListener('click', (e)=>{
+      const id = e.target.getAttribute && e.target.getAttribute('data-done');
+      if(!id) return;
+      const t = (state.plan.tasks||[]).find(x=>x.id===id);
+      if(t){ t.status = t.status==='done'?'planned':'done'; save(); renderToday(); }
+    });
+  }
 
-- a complete, corrected **`index.html`** (all sections, correct CSS/JS tags)  
-- a complete, unified **`app.js`** that includes:
-  - timezone‑safe dates (no Tuesday collapsing),
-  - **Weekly Draw → Generate Weekly Plan** (with an empty‑selection guard),
-  - **drag‑to‑move**,
-  - **Alt‑drag‑to‑copy**,
-  - **inline edit** for title and minutes,
-  - capacity recalculation,
-  - and the Reset button support.
+  // ---------- Deck ----------
+  function renderDeck(){
+    buildDeck();
+    const root = $('#deckView');
+    if(!root) return;
+    root.innerHTML = '';
+    suits.forEach(s => {
+      const box = document.createElement('div');
+      box.className = 'card';
+      box.innerHTML = `<h3>${suitMeta[s].icon} ${suitMeta[s].name}</h3>`;
+      const list = state.deck.filter(c=>c.suit===s);
+      if(list.length===0){
+        box.innerHTML += '<div class="muted">No cards yet.</div>';
+      } else {
+        list.forEach(c => {
+          const metaColor = `suit-badge ${suitMeta[c.suit].color}`;
+          const chip = document.createElement('div');
+          chip.className = 'card-chip';
+          chip.innerHTML = `
+            <div class="meta"><span class="${metaColor}">${suitMeta[c.suit].icon} ${c.rank}</span></div>
+            <div class="title">${c.title}</div>
+            <div class="small">${c.due?('Due '+c.due):''}</div>
+          `;
+          box.appendChild(chip);
+        });
+      }
+      root.appendChild(box);
+    });
+  }
 
-Your **`styles.css`** can stay as you have it (including the v0.3 and v0.3.1 snippets you already added). I’ll also re‑include the tiny CSS for copy‑cursor at the end in case it didn’t get added.
+  // Export
+  const exportBtn = $('#exportBtn');
+  if (exportBtn) exportBtn.addEventListener('click', ()=>{
+    buildDeck();
+    const blob = new Blob([JSON.stringify({state}, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const link = $('#downloadLink');
+    link.href = url;
+    link.download = 'solvent-deck-export.json';
+    link.style.display = 'inline-block';
+    link.textContent = 'Download export';
+  });
 
----
+  // ---------- Review & Insights ----------
+  function renderReview(){
+    const root = $('#reviewView');
+    if(!root) return;
+    root.innerHTML = '';
+    const tasks = state.plan.tasks||[];
+    if(tasks.length===0){ root.innerHTML = '<div class="muted">No plan yet.</div>'; return; }
 
-## 0) What you’ll do (2 quick steps)
+    const done = tasks.filter(t=>t.status==='done').length;
+    const total = tasks.length;
+    const pct = total? Math.round((done/total)*100) : 0;
 
-1) Replace the **entire contents** of `index.html` with the version below.  
-2) Replace the **entire contents** of `app.js` with the version below.  
-
-Then wait ~30–60 seconds for GitHub Pages to republish, and do a **hard refresh** (Cmd/Ctrl + Shift + R).
-
----
-
-## 1) Drop‑in `index.html` (full, correct)
-
-> In GitHub, open `index.html` → paste everything below → **Commit changes**.
-
-```html
-<!DOCTYPE html>
-<html lang="en" dir="ltr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <title>Solvent Deck — 52‑Goal Digital Platform (Prototype)</title>
-  <meta name="description" content="Design a balanced life across Career, Health & Fitness, Relationships, and Finances—one card at a time. Draw weekly focus, plan, and review." />
-
-  <!-- Open Graph / Twitter -->
-  <meta property="og:title" content="Solvent Deck — 52‑Goal Digital Platform" />
-  <meta property="og:description" content="A playful system to align Aces (identity), Kings/Queens (strategy), and J–2 (habits). Draw weekly and compound progress." />
-  <meta property="og:type" content="website" />
-  <meta property="og:image" content="https://dmkromah.github.io/solvent-deck/favicon.svg" />
-  <meta property="og:url" content="https://dmkromah.github.io/solvent-deck/" />
-  <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Solvent Deck — 52‑Goal Digital Platform" />
-  <meta name="twitter:description" content="Draw weekly focus cards and turn them into a simple plan." />
-  <meta name="twitter:image" content="https://dmkromah.github.io/solvent-deck/favicon.svg" />
-
-  <!-- Favicon -->
-  favicon.svg
-
-  <!-- Styles -->
-  styles.css
-</head>
-<body>
-  <!-- Skip link for keyboard users -->
-  #mainSkip to main content</a>
-
-  <header class="app-header" role="banner">
-    <div class="brand" aria-label="Solvent Deck brand">
-      favicon.svg
-      <div class="title">Solvent Deck</div>
-    </div>
-
-    <nav class="top-nav" id="topNav" role="navigation" aria-label="Primary">
-      <button data-section="welcome">Welcome</button>
-      <button data-section="how">How It Works</button>
-      <button data-section="domains">Domains</button>
-      <button data-section="aces">Aces</button>
-      <button data-section="strategics">K/Q</button>
-      <button data-section="habits">J–2</button>
-      <button data-section="draw">Weekly Draw</button>
-      <button data-section="plan">Weekly Plan</button>
-      <button data-section="today">Today</button>
-      <button data-section="deck">Deck</button>
-      <button data-section="review">Review</button>
-      <button data-section="insights">Insights</button>
-      <button data-section="settings">Settings</button>
-    </nav>
-  </header>
-
-  <main id="main" role="main" tabindex="-1">
-    <!-- Welcome -->
-    <section id="welcome" class="section visible" aria-labelledby="welcome-h1">
-      <div class="hero">
-        <h1 id="welcome-h1">Design a life aligned with who you're becoming — one card at a time.</h1>
-        <p class="subtitle">
-          This is a low‑fidelity prototype to demonstrate the flow.
-          Build your deck, draw weekly focus cards, and turn them into a simple plan.
-        </p>
-        <div class="actions">
-          <button class="primary" id="beginBtn" aria-describedby="welcome-hint">Begin Your Deck</button>
-          <button id="seedBtn" aria-label="Load a complete example deck for demo">Load Example Deck</button>
-        </div>
-        <p id="welcome-hint" class="small muted">Tip: Use “Load Example Deck” for a quick tour.</p>
+    root.innerHTML = `
+      <div class="card">
+        <div>Completion: <span class="badge ${pct>=80?'good':pct>=60?'warn':'danger'}">${pct}%</span></div>
+        <div class="small">${done}/${total} tasks completed</div>
       </div>
-    </section>
-
-    <!-- How it works -->
-    <section id="how" class="section" aria-labelledby="how-h2">
-      <div class="card info">
-        <h2 id="how-h2">How the Deck Works</h2>
-        <ol>
-          <li><strong>Aces</strong> — transformational identity shifts (3–10 years)</li>
-          <li><strong>Kings & Queens</strong> — strategic projects (semester–year)</li>
-          <li><strong>J–2</strong> — weekly/daily habits that compound</li>
-          <li><strong>Weekly Draw</strong> — pick 3–5 to focus your week</li>
-          <li><strong>Plan & Review</strong> — make progress, reflect, iterate</li>
-        </ol>
-        <p class="muted">Suits: ♠ Career · ♣ Health & Fitness · ♥ Relationships · ♦ Finances</p>
-      </div>
-    </section>
-
-    <!-- Domains -->
-    <section id="domains" class="section" aria-labelledby="domains-h2">
-      <h2 id="domains-h2">Domains (Suits)</h2>
+      <hr class="sep"/>
       <div class="grid grid-2">
-        <div class="card domain">
-          <h3>♠ Spades — Career</h3>
-          <p>Growth, mastery, contribution</p>
-        </div>
-        <div class="card domain">
-          <h3>♣ Clubs — Health & Fitness</h3>
-          <p>Vitality, energy, resilience</p>
-        </div>
-        <div class="card domain">
-          <h3>♥ Hearts — Relationships</h3>
-          <p>Students, colleagues, collaborators, family</p>
-        </div>
-        <div class="card domain">
-          <h3>♦ Diamonds — Finances</h3>
-          <p>Grants, sustainability, freedom</p>
-        </div>
+        ${['spades','clubs','hearts','diamonds'].map(s=>{
+          const sTasks = tasks.filter(t=>t.suit===s);
+          const sDone = sTasks.filter(t=>t.status==='done').length;
+          const sPct = sTasks.length? Math.round((sDone/sTasks.length)*100) : 0;
+          return `<div class=card><strong>${suitMeta[s].icon} ${suitMeta[s].name}</strong><div class=small>${sDone}/${sTasks.length} · ${sPct}%</div></div>`
+        }).join('')}
       </div>
-      <div class="actions">
-        <button class="primary" data-goto="aces">Let's build your deck</button>
-      </div>
-    </section>
+    `;
+  }
 
-    <!-- Aces -->
-    <section id="aces" class="section" aria-labelledby="aces-h2">
-      <h2 id="aces-h2">Create Your Aces</h2>
-      <p class="muted">Identity-level ambitions per domain. Keep them bold and measurable.</p>
-      <div class="grid grid-2" id="aceEditor" aria-live="polite"></div>
-      <div class="actions">
-        <button class="primary" data-goto="strategics">Save Aces & Continue</button>
-      </div>
-    </section>
+  function renderInsights(){
+    const root = $('#insightsView');
+    if(!root) return;
+    root.innerHTML = '';
+    const tasks = state.plan.tasks||[];
+    if(tasks.length===0){ root.innerHTML = '<div class="muted">No data yet.</div>'; return; }
 
-    <!-- Strategics -->
-    <section id="strategics" class="section" aria-labelledby="strategics-h2">
-      <h2 id="strategics-h2">Strategic Projects (Kings & Queens)</h2>
-      <p class="muted">Two per domain. Add finish lines and simple milestones.</p>
-      <div id="strategicEditor" aria-live="polite"></div>
-      <div class="actions">
-        <button class="primary" data-goto="habits">Save Strategics & Continue</button>
-      </div>
-    </section>
+    const byTitle = {};
+    tasks.forEach(t=>{ byTitle[t.title] = byTitle[t.title]||{ total:0, done:0 }; byTitle[t.title].total++; if(t.status==='done') byTitle[t.title].done++; });
+    const rows = Object.entries(byTitle).map(([title, v])=>({ title, ratio: v.done/(v.total||1), total:v.total })).sort((a,b)=>b.ratio-a.ratio).slice(0,5);
 
-    <!-- Habits -->
-    <section id="habits" class="section" aria-labelledby="habits-h2">
-      <h2 id="habits-h2">Tactical Habits (J–2)</h2>
-      <p class="muted">Pick 3 starter habits per domain to keep onboarding light. You can add more later.</p>
-      <div id="habitEditor" aria-live="polite"></div>
-      <div class="actions">
-        <button class="primary" data-goto="draw">Save Habits & Go to Draw</button>
-      </div>
-    </section>
+    const list = document.createElement('div');
+    list.className = 'card';
+    list.innerHTML = `<h3>Most effective cards</h3>${rows.map(r=>`<div class=small>${Math.round(r.ratio*100)}% of ${r.total} — ${r.title}</div>`).join('')}`;
+    root.appendChild(list);
+  }
 
-    <!-- Weekly Draw -->
-    <section id="draw" class="section" aria-labelledby="draw-h2">
-      <h2 id="draw-h2">Weekly Draw</h2>
-      <p class="small muted">Hint: Keep “min 1 per domain” on for a balanced week.</p>
-      <div class="controls">
-        <label><input type="checkbox" id="minPerDomain" checked> Ensure at least 1 per domain</label>
-        <label>Number of cards:
-          <select id="drawCount">
-            <option>3</option>
-            <option selected>4</option>
-            <option>5</option>
-          </select>
-        </label>
-        <button class="primary" id="drawBtn">🎴 Draw my cards</button>
-      </div>
-      <div id="drawResult" class="grid grid-4" aria-live="polite"></div>
-      <div class="actions">
-        <button class="primary" id="genPlanBtn">Generate Weekly Plan</button>
-      </div>
-    </section>
+  // ---------- Settings ----------
+  const saveSettingsBtn = $('#saveSettingsBtn');
+  if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', ()=>{
+    const cap = $('#capHours');
+    const v = parseInt(cap && cap.value || 8,10);
+    state.settings.weeklyCapacityHours = v;
+    save();
+    alert('Settings saved.');
+  });
 
-    <!-- Weekly Plan -->
-    <section id="plan" class="section" aria-labelledby="plan-h2">
-      <h2 id="plan-h2">Weekly Plan</h2>
-      <p class="small muted">
-        Hint: You can mark tasks done here or in <strong>Today</strong>. 
-        <strong>Hold Alt while dragging</strong> to copy a task.
-      </p>
-      <p class="muted" id="capacityBanner">Capacity: —</p>
-      <div id="planGrid" class="plan-grid" aria-live="polite"></div>
-      <div class="actions">
-        <button class="primary" data-goto="today">Approve Plan & Go to Today</button>
-      </div>
-    </section>
+  const resetBtn = $('#resetBtn');
+  if (resetBtn) resetBtn.addEventListener('click', ()=>{
+    const ok = confirm('Reset Solvent Deck to factory settings? This will clear your local data (deck/draw/plan).');
+    if(!ok) return;
+    localStorage.removeItem('solventDeckState');
+    location.reload();
+  });
 
-    <!-- Today -->
-    <section id="today" class="section" aria-labelledby="today-h2">
-      <h2 id="today-h2">Today</h2>
-      <div id="todayList" class="list" aria-live="polite"></div>
-    </section>
+  // ---------- Example Seeder ----------
+  function seedExample(){
+    state.aces.spades = { title:'Lead solvency psychology as a field', metrics:['2 papers','1 book','5 talks'] };
+    state.aces.clubs = { title:'Sustain a high‑energy body', metrics:['7.5h sleep','150 workouts/yr'] };
+    state.aces.hearts = { title:'Build a solvent family culture', metrics:['weekly partner meeting'] };
+    state.aces.diamonds = { title:'Become financially sovereign creator', metrics:['30% savings','12mo runway'] };
 
-    <!-- Deck -->
-    <section id="deck" class="section" aria-labelledby="deck-h2">
-      <h2 id="deck-h2">Your Deck</h2>
-      <div id="deckView" aria-live="polite"></div>
-      <div class="actions">
-        <button id="exportBtn">Export Deck JSON</button>
-        <a id="downloadLink" style="display:none;">Download</a>
-      </div>
-    </section>
+    state.strategics.spades = [
+      { title:'Complete territoriality SLR and submit', due:fmtLocalDate(addDays(new Date(), 120)), mins:90 },
+      { title:"Design and launch 'Solvent Career' course", due:fmtLocalDate(addDays(new Date(), 180)), mins:60 }
+    ];
+    state.strategics.clubs = [
+      { title:'Optimize sleep routine by June', due:fmtLocalDate(addDays(new Date(), 130)), mins:45 },
+      { title:'Run comfortable 5k', due:fmtLocalDate(addDays(new Date(), 160)), mins:40 }
+    ];
+    state.strategics.hearts = [
+      { title:'Weekly partner meeting ritual', due:fmtLocalDate(addDays(new Date(), 84)), mins:45 },
+      { title:'1:1 with each child weekly', due:fmtLocalDate(addDays(new Date(), 84)), mins:30 }
+    ];
+    state.strategics.diamonds = [
+      { title:'Launch consulting offer by July', due:fmtLocalDate(addDays(new Date(), 170)), mins:60 },
+      { title:'Grant pipeline setup', due:fmtLocalDate(addDays(new Date(), 150)), mins:50 }
+    ];
 
-    <!-- Review -->
-    <section id="review" class="section" aria-labelledby="review-h2">
-      <h2 id="review-h2">Weekly Review</h2>
-      <div id="reviewView" aria-live="polite"></div>
-      <div class="actions">
-        <button id="newWeekBtn" data-goto="draw">Draw Next Week</button>
-      </div>
-    </section>
+    state.habits.spades = [
+      { title:'Write 300 words', cadence:'daily', duration:25 },
+      { title:'Two research sprints', cadence:'2x', duration:45 },
+      { title:'Read one seminal paper', cadence:'weekly', duration:30 }
+    ];
+    state.habits.clubs = [
+      { title:'10k steps', cadence:'daily', duration:40 },
+      { title:'Protein at each meal', cadence:'daily', duration:10 },
+      { title:'Lights out 10pm', cadence:'daily', duration:5 }
+    ];
+    state.habits.hearts = [
+      { title:'Share three appreciations', cadence:'daily', duration:10 },
+      { title:'Weekly partner meeting', cadence:'weekly', duration:45 },
+      { title:'Call a mentor', cadence:'weekly', duration:20 }
+    ];
+    state.habits.diamonds = [
+      { title:'Track daily expenses', cadence:'daily', duration:8 },
+      { title:'DCA invest', cadence:'weekly', duration:15 },
+      { title:'Review budget', cadence:'weekly', duration:20 }
+    ];
 
-    <!-- Insights -->
-    <section id="insights" class="section" aria-labelledby="insights-h2">
-      <h2 id="insights-h2">Insights</h2>
-      <div id="insightsView" aria-live="polite"></div>
-    </section>
+    state.draw = { weekStart: null, selected: [] };
+    state.plan = { weekStart: null, tasks: [] };
+    save();
+  }
 
-    <!-- Settings -->
-    <section id="settings" class="section" aria-labelledby="settings-h2">
-      <h2 id="settings-h2">Settings</h2>
-      <div class="controls">
-        <label>Weekly capacity (hours): <input type="number" id="capHours" value="8" min="1" max="40"></label>
-        <button id="saveSettingsBtn">Save</button>
-        <button id="resetBtn" class="danger" aria-label="Reset the app to factory state">Reset data</button>
-      </div>
-    </section>
-  </main>
-
-  <footer class="app-footer" role="contentinfo">
-    <small>Prototype v0.3.1 • LocalStorage only • No external libs</small>
-  </footer>
-
-  <!-- Scripts -->
-  app.js</script>
-</body>
-</html>
+  // First render
+  showSection('welcome');
+})();
