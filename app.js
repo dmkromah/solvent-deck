@@ -593,185 +593,229 @@ function renderPlanSummary(){
   `;
 }
 
-  function renderPlan(){
-    const root = $('#planGrid');
-    if(!root) return;
-    root.innerHTML = '';
 
-    const weekStart = state.plan.weekStart || fmtLocalDate(startOfWeek(new Date()));
-    const tasks     = state.plan.tasks || [];
+// ----- Delete Task helper (keep this if not already present) -----
+function deleteTaskById(taskId){
+  try {
+    if (!state || !state.plan || !Array.isArray(state.plan.tasks)) return;
+    const before = state.plan.tasks.length;
+    state.plan.tasks = state.plan.tasks.filter(t => t.id !== taskId);
+    const after = state.plan.tasks.length;
+    if (before !== after) {
+      save();
+      renderPlan();
+    }
+  } catch (err) {
+    console.error('[DeleteTask] error:', err);
+    alert('Could not delete the task. Please refresh and try again.');
+  }
+}
 
-    // Build day buckets Mon..Sun
-    const perDay = [0,1,2,3,4,5,6].map(i => ({
-      date: fmtLocalDate(addDays(parseLocalDate(weekStart), i)),
-      tasks: []
-    }));
+// ----- KNOWN-GOOD Weekly Plan renderer (Delete + DnD + Alt-copy + inline edit) -----
+function renderPlan(){
+  const root = $('#planGrid');
+  if(!root) return;
+  root.innerHTML = '';
 
-    // Place tasks in buckets
-    tasks.forEach(t => {
-      const dt = parseLocalDate(t.date);
-      const day = dt.getDay();          // Sun=0..Sat=6
-      const idx = (day + 6) % 7;        // Mon=0..Sun=6
-      perDay[idx].tasks.push(t);
+  const weekStart = state.plan.weekStart || fmtLocalDate(startOfWeek(new Date()));
+  const tasks = state.plan.tasks || [];
+
+  // Build day buckets Mon..Sun
+  const perDay = [0,1,2,3,4,5,6].map(i => ({
+    date: fmtLocalDate(addDays(parseLocalDate(weekStart), i)),
+    tasks: []
+  }));
+
+  // Place tasks in buckets
+  tasks.forEach(t => {
+    const dt = parseLocalDate(t.date);
+    const day = dt.getDay();           // Sun=0..Sat=6
+    const idx = (day + 6) % 7;         // Mon=0..Sun=6
+    perDay[idx].tasks.push(t);
+  });
+
+  // Capacity banner
+  const totalMins = tasks.reduce((a,b)=>a+(b.duration||0),0);
+  const capMins = (state.settings.weeklyCapacityHours||8)*60;
+  const usage = capMins ? Math.round((totalMins/capMins)*100) : 0;
+  const banner = `Capacity used: ${Math.round(totalMins/60)}h (${usage}%) of ${state.settings.weeklyCapacityHours||8}h`;
+  const capEl = $('#capacityBanner');
+  if (capEl) capEl.innerText = banner;
+
+  // (Optional) Weekly Summary Card — safe guard (no freeze if not present)
+  if (typeof renderPlanSummary === 'function') {
+    try { renderPlanSummary(); } catch(e){ console.error('[Summary] render error:', e); }
+  }
+
+  // Render columns and tasks
+  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  perDay.forEach((d, i) => {
+    const col = document.createElement('div');
+    col.className = 'day-col';
+    col.dataset.date = d.date; // used by drop handler
+    col.innerHTML = `<h3>${dayNames[i]} <span class="small">${d.date}</span></h3>`;
+
+    d.tasks.forEach(t => {
+      const node = document.createElement('div');
+      node.className = 'task';
+      node.setAttribute('draggable', 'true');
+      node.dataset.taskId = t.id;
+
+      node.innerHTML = `
+        <div class="title" data-task-id="${t.id}" title="Click to edit title">${t.title}</div>
+        <div class="meta">
+          <span class="badge ${'suit-'+t.suit}">${suitMeta[t.suit].icon} ${t.rank}</span>
+          <span class="badge duration-badge" data-task-id="${t.id}" title="Click to edit minutes">${t.duration}m</span>
+          <button data-done="${t.id}" class="task-btn">Mark done</button>
+          <button data-delete="${t.id}" class="task-btn danger-btn" title="Delete this task">Delete</button>
+        </div>`;
+      col.appendChild(node);
     });
 
-    // Capacity banner
-    const totalMins = tasks.reduce((a,b)=>a+(b.duration||0),0);
-    const capMins   = (state.settings.weeklyCapacityHours||8)*60;
-    const usage     = Math.round((totalMins/capMins)*100);
-    $('#capacityBanner') && ($('#capacityBanner').innerText =
-      `Capacity used: ${Math.round(totalMins/60)}h (${usage}%) of ${state.settings.weeklyCapacityHours}h`
-      );
- renderPlanSummary();
-    // Render columns and tasks
-    const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    perDay.forEach((d, i) => {
-      const col = document.createElement('div');
-      col.className = 'day-col';
-      col.dataset.date = d.date; // used by drop handler
-      col.innerHTML = `<h3>${dayNames[i]} <span class="small">${d.date}</span></h3>`;
+    root.appendChild(col);
+  });
 
-      d.tasks.forEach(t => {
-        const node = document.createElement('div');
-        node.className = 'task';
-        node.setAttribute('draggable', 'true');
-        node.dataset.taskId = t.id;
+  // ----- Actions via delegation (Delete / Done) -----
+  root.onclick = (e) => {
+    // DELETE
+    const delId = e.target && e.target.getAttribute && e.target.getAttribute('data-delete');
+    if (delId) {
+      const ok = confirm('Delete this task from the week? This cannot be undone.');
+      if (ok) deleteTaskById(delId);
+      return;
+    }
+    // DONE toggle
+    const doneId = e.target && e.target.getAttribute && e.target.getAttribute('data-done');
+    if (doneId) {
+      const t = (state.plan.tasks||[]).find(x=>x.id===doneId);
+      if(t){ t.status = t.status==='done'?'planned':'done'; save(); renderPlan(); }
+      return;
+    }
+  };
 
-        node.innerHTML = `
-          <div class="title" data-task-id="${t.id}" title="Click to edit title">${t.title}</div>
-          <div class="meta">
-            <span class="badge ${'suit-'+t.suit}">${suitMeta[t.suit].icon} ${t.rank}</span>
-            <span class="badge duration-badge" data-task-id="${t.id}" title="Click to edit minutes">${t.duration}m</span>
-            <button data-done="${t.id}">Mark done</button>
-          </div>`;
-        col.appendChild(node);
-      });
+  // ----- Drag & Drop (bind once) -----
+  if (!_dndBound) {
+    _dndBound = true;
 
-      root.appendChild(col);
+    // Alt copy-mode flags
+    document.addEventListener('keydown', (e) => { if (e.key === 'Alt') { _copyMode = true;  document.body.classList.add('copy-mode'); }});
+    document.addEventListener('keyup',   (e) => { if (e.key === 'Alt') { _copyMode = false; document.body.classList.remove('copy-mode'); }});
+
+    // DRAG START/END
+    root.addEventListener('dragstart', (e) => {
+      const taskEl = e.target.closest('.task');
+      if (!taskEl) return;
+      e.dataTransfer.effectAllowed = 'copyMove';
+      const isCopy = _copyMode || !!e.altKey;
+      e.dataTransfer.setData('text/task-id', taskEl.dataset.taskId);
+      e.dataTransfer.setData('text/copy', isCopy ? '1' : '0');
+      if (isCopy) taskEl.classList.add('copying');
+      taskEl.classList.add('dragging');
+    });
+    root.addEventListener('dragend', (e) => {
+      const taskEl = e.target.closest('.task');
+      if (taskEl) { taskEl.classList.remove('dragging'); taskEl.classList.remove('copying'); }
     });
 
-    // Bind (once) — drag/drop + inline edit + copy mode
-    if (!_dndBound) {
-      _dndBound = true;
+    // DRAG OVER / LEAVE
+    root.addEventListener('dragover', (e) => {
+      const col = e.target.closest('.day-col');
+      if (!col) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = _copyMode ? 'copy' : 'move';
+      col.classList.add('drag-over');
+    });
+    root.addEventListener('dragleave', (e) => {
+      const col = e.target.closest('.day-col');
+      if (col) col.classList.remove('drag-over');
+    });
 
-      // Alt toggles copy mode (visual hint via body class)
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Alt') { _copyMode = true;  document.body.classList.add('copy-mode'); }
+    // DROP
+    root.addEventListener('drop', (e) => {
+      const col = e.target.closest('.day-col');
+      if (!col) return;
+      e.preventDefault();
+      col.classList.remove('drag-over');
+
+      const taskId = e.dataTransfer.getData('text/task-id');
+      const isCopy = (e.dataTransfer.getData('text/copy') === '1') || _copyMode;
+      if (!taskId) return;
+
+      const newDate = col.dataset.date;
+      const t = (state.plan.tasks||[]).find(x => x.id === taskId);
+      if (!t) return;
+
+      if (isCopy) {
+        const newId = 't-' + Date.now() + '-' + Math.floor(Math.random() * 1e6);
+        const clone = { ...t, id: newId, date: newDate, status: 'planned' };
+        state.plan.tasks.push(clone);
+      } else {
+        if (t.date !== newDate) t.date = newDate;
+      }
+
+      save();
+      renderPlan();
+    });
+
+    // ----- Inline Edit: Title -----
+    root.addEventListener('click', (e) => {
+      const titleEl = e.target.closest('.title');
+      if (!titleEl) return;
+      const taskId = titleEl.dataset.taskId;
+      const t = (state.plan.tasks||[]).find(x => x.id === taskId);
+      if (!t) return;
+
+      const input = document.createElement('input');
+      input.className = 'inline-edit';
+      input.type = 'text';
+      input.value = t.title;
+
+      titleEl.replaceWith(input);
+      input.focus(); input.select();
+
+      const commit = () => { t.title = (input.value.trim() || t.title); save(); renderPlan(); };
+      const cancel = () => renderPlan();
+
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key==='Enter') commit();
+        else if (ev.key==='Escape') cancel();
       });
-      document.addEventListener('keyup', (e) => {
-        if (e.key === 'Alt') { _copyMode = false; document.body.classList.remove('copy-mode'); }
+      input.addEventListener('blur', commit);
+    });
+
+    // ----- Inline Edit: Duration -----
+    root.addEventListener('click', (e) => {
+      const durEl = e.target.closest('.duration-badge');
+      if (!durEl) return;
+
+      const taskId = durEl.dataset.taskId;
+      const t = (state.plan.tasks||[]).find(x => x.id === taskId);
+      if (!t) return;
+
+      const input = document.createElement('input');
+      input.className = 'inline-edit';
+      input.type = 'number';
+      input.min = '5'; input.max = '240'; input.step = '5';
+      input.value = t.duration || 20;
+
+      durEl.replaceWith(input);
+      input.focus(); input.select();
+
+      const commit = () => {
+        const val = parseInt(input.value, 10);
+        if (!isNaN(val) && val > 0) { t.duration = Math.max(5, Math.min(240, val)); save(); renderPlan(); }
+        else { renderPlan(); }
+      };
+      const cancel = () => renderPlan();
+
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key==='Enter') commit();
+        else if (ev.key==='Escape') cancel();
       });
-
-      // DRAG START/END on tasks
-      root.addEventListener('dragstart', (e) => {
-        const taskEl = e.target.closest('.task');
-        if (!taskEl) return;
-
-        e.dataTransfer.effectAllowed = 'copyMove';
-        const isCopy = _copyMode || !!e.altKey; // snapshot at drag start
-        e.dataTransfer.setData('text/task-id', taskEl.dataset.taskId);
-        e.dataTransfer.setData('text/copy',   isCopy ? '1' : '0');
-
-        if (isCopy) taskEl.classList.add('copying');
-        taskEl.classList.add('dragging');
-      });
-
-      root.addEventListener('dragend', (e) => {
-        const taskEl = e.target.closest('.task');
-        if (taskEl) { taskEl.classList.remove('dragging'); taskEl.classList.remove('copying'); }
-      });
-
-      // DRAG OVER / LEAVE on columns
-      root.addEventListener('dragover', (e) => {
-        const col = e.target.closest('.day-col');
-        if (!col) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = _copyMode ? 'copy' : 'move';
-        col.classList.add('drag-over');
-      });
-      root.addEventListener('dragleave', (e) => {
-        const col = e.target.closest('.day-col');
-        if (col) col.classList.remove('drag-over');
-      });
-
-      // DROP on columns (move OR copy)
-      root.addEventListener('drop', (e) => {
-        const col = e.target.closest('.day-col');
-        if (!col) return;
-        e.preventDefault();
-        col.classList.remove('drag-over');
-
-        const taskId  = e.dataTransfer.getData('text/task-id');
-        const isCopy  = (e.dataTransfer.getData('text/copy') === '1') || _copyMode;
-        if (!taskId) return;
-
-        const newDate = col.dataset.date;
-        const t = (state.plan.tasks||[]).find(x => x.id === taskId);
-        if (!t) return;
-
-        if (isCopy) {
-          const newId = 't-' + Date.now() + '-' + Math.floor(Math.random()*1e6);
-          const clone = { ...t, id: newId, date: newDate, status: 'planned' };
-          state.plan.tasks.push(clone);
-        } else {
-          if (t.date !== newDate) t.date = newDate;
-        }
-        save();
-        renderPlan();
-      });
-
-      // INLINE EDIT: Title
-      root.addEventListener('click', (e) => {
-        const titleEl = e.target.closest('.title');
-        if (!titleEl) return;
-
-        const taskId = titleEl.dataset.taskId;
-        const t = (state.plan.tasks||[]).find(x => x.id === taskId);
-        if (!t) return;
-
-        const input = document.createElement('input');
-        input.className = 'inline-edit';
-        input.type = 'text';
-        input.value = t.title;
-
-        titleEl.replaceWith(input);
-        input.focus(); input.select();
-
-        const commit = () => { t.title = (input.value.trim() || t.title); save(); renderPlan(); };
-        const cancel = () => renderPlan();
-
-        input.addEventListener('keydown', (ev) => { if (ev.key==='Enter') commit(); else if (ev.key==='Escape') cancel(); });
-        input.addEventListener('blur', commit);
-      });
-
-      // INLINE EDIT: Duration
-      root.addEventListener('click', (e) => {
-        const durEl = e.target.closest('.duration-badge');
-        if (!durEl) return;
-
-        const taskId = durEl.dataset.taskId;
-        const t = (state.plan.tasks||[]).find(x => x.id === taskId);
-        if (!t) return;
-
-        const input = document.createElement('input');
-        input.className = 'inline-edit';
-        input.type = 'number';
-        input.min = '5'; input.max = '240'; input.step = '5';
-        input.value = t.duration || 20;
-
-        durEl.replaceWith(input);
-        input.focus(); input.select();
-
-        const commit = () => {
-          const val = parseInt(input.value, 10);
-          if (!isNaN(val) && val > 0) { t.duration = Math.max(5, Math.min(240, val)); save(); renderPlan(); }
-          else { renderPlan(); }
-        };
-        const cancel = () => renderPlan();
-
-        input.addEventListener('keydown', (ev) => { if (ev.key==='Enter') commit(); else if (ev.key==='Escape') cancel(); });
-        input.addEventListener('blur', commit);
-      });
+      input.addEventListener('blur', commit);
+    });
+  }
+}
 
       // MARK DONE toggle
       root.addEventListener('click', (e) => {
@@ -1063,4 +1107,4 @@ function renderPlanSummary(){
 
   // ---------- First render ----------
   showSection('welcome');
-});
+})();
