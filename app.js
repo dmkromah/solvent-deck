@@ -1,8 +1,41 @@
 
+
 (function(){
   // ---------- Tiny DOM helpers ----------
   const $  = (sel, root=document) => root.querySelector(sel);
   const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+// ---- Empty deck message helpers ----
+function showEmptyDeckMessage(show){
+  const box = document.getElementById('drawEmptyMsg');
+  if (!box) return;
+  box.style.display = show ? 'block' : 'none';
+}
+
+function wireEmptyDeckActions(){
+  const btnExample = document.getElementById('emptyLoadExample');
+  const btnAces    = document.getElementById('emptyGotoAces');
+
+  // Load example deck, then come back to Draw
+  if (btnExample) btnExample.addEventListener('click', ()=>{
+    try {
+      if (typeof seedExample === 'function') {
+        seedExample();
+        alert('Example deck loaded. You can now draw your cards.');
+        showSection('draw');
+      }
+    } catch(e) {
+      console.error('[EmptyDeck] seedExample error:', e);
+      alert('Could not load the example deck. Please refresh and try again.');
+    }
+  });
+
+  // Jump to Aces to start building
+  if (btnAces) btnAces.addEventListener('click', ()=> showSection('aces'));
+}
+
+// Call this once on startup (safe if elements are not yet in DOM)
+wireEmptyDeckActions();
 
   // ---------- Local-time date helpers (no UTC drift) ----------
   const pad2 = n => (n < 10 ? '0' + n : '' + n);
@@ -343,15 +376,71 @@
       const c = pool.splice(Math.floor(Math.random()*pool.length), 1)[0];
       if(!selected.find(x=>x.id===c.id)) selected.push(c);
     }
+  
+function drawWeekly(){
+  buildDeck();
+
+  // Read controls
+  const countSel = $('#drawCount');
+  const perDomain = $('#minPerDomain');
+  const count = countSel ? parseInt(countSel.value,10) : 4;
+  const ensureBalance = perDomain ? perDomain.checked : true;
+
+  // Build the pool (exclude Aces from random weekly draw)
+  const pool = (state.deck || []).filter(c => c && c.rank !== 'A');
+
+  // If there's nothing to draw from, show the helper message and bail early
+  if (!pool.length) {
+    showEmptyDeckMessage(true);
+    // Also clear any previous selection rendering
+    const root = $('#drawResult');
+    if (root) root.innerHTML = '<div class="muted">No cards yet. Load the example deck or add cards in Aces / Strategics / Habits.</div>';
+    return;
+  }
 
     const weekStartDate = startOfWeek(new Date());
     state.draw = { weekStart: fmtLocalDate(weekStartDate), selected: selected.map(c=>c.id) };
     save();
     renderDraw();
+  // Hide message if previously shown
+  showEmptyDeckMessage(false);
+
+  // Balance helper
+  const bySuit = { spades:[], clubs:[], hearts:[], diamonds:[] };
+  pool.forEach(c => { if (bySuit[c.suit]) bySuit[c.suit].push(c); });
+
+  // Selection
+  const selected = [];
+  if (ensureBalance){
+    ['spades','clubs','hearts','diamonds'].forEach(s => {
+      if (bySuit[s].length > 0 && selected.length < count){
+        selected.push(bySuit[s][Math.floor(Math.random()*bySuit[s].length)]);
+      }
+    });
+  }
+  while (selected.length < count && pool.length > 0){
+    const c = pool.splice(Math.floor(Math.random()*pool.length), 1)[0];
+    if (!selected.find(x => x.id === c.id)) selected.push(c);
   }
 
   function renderDraw(){
     buildDeck();
+  // Save selection + week
+  const weekStartDate = startOfWeek(new Date());
+  state.draw = { weekStart: fmtLocalDate(weekStartDate), selected: selected.map(c=>c.id) };
+  save();
+
+  renderDraw();
+}
+
+
+  
+function renderDraw(){
+  buildDeck();
+  // Hide empty message if pool is not empty anymore
+  const poolNow = (state.deck || []).filter(c => c && c.rank !== 'A');
+  showEmptyDeckMessage(poolNow.length === 0);
+
     const root = $('#drawResult');
     if(!root) return;
     root.innerHTML = '';
@@ -440,6 +529,70 @@
   }
 
   // ---------- Render Weekly Plan (drag/move + Alt-copy + inline edit) ----------
+
+// ----- Weekly Summary (Option D) -----
+function renderPlanSummary(){
+  const box = document.getElementById('planSummary');
+  if (!box) return;
+
+  const plan = (state.plan && Array.isArray(state.plan.tasks)) ? state.plan : { tasks: [] };
+  const tasks = plan.tasks || [];
+
+  // Totals
+  const totalMins = tasks.reduce((a,b)=> a + (b.duration || 0), 0);
+  const totalHours = Math.round((totalMins/60) * 10) / 10;
+
+  const capHrs = state.settings && state.settings.weeklyCapacityHours ? state.settings.weeklyCapacityHours : 8;
+  const capMins = capHrs * 60;
+  const usagePct = capMins ? Math.round((totalMins / capMins) * 100) : 0;
+
+  // Counts by suit
+  const suitsList = ['spades','clubs','hearts','diamonds'];
+  const counts = { spades:0, clubs:0, hearts:0, diamonds:0 };
+  tasks.forEach(t => { if (counts.hasOwnProperty(t.suit)) counts[t.suit]++; });
+
+  // Usage badge class
+  let usageClass = 'badge-ok';
+  if (usagePct >= 90) usageClass = 'badge-high';
+  else if (usagePct >= 70) usageClass = 'badge-warn';
+
+  // Hint logic
+  const maxCount = Math.max(counts.spades, counts.clubs, counts.hearts, counts.diamonds);
+  const minCount = Math.min(counts.spades, counts.clubs, counts.hearts, counts.diamonds);
+  let hint = 'Looks balanced. Aim for small, meaningful steps.';
+  if (usagePct >= 95) hint = 'This looks heavy—consider reducing durations or moving a card.';
+  else if (usagePct <= 40) hint = 'Plenty of capacity left—consider adding one helpful habit.';
+  else if (maxCount - minCount >= 3) hint = 'One suit dominates—check if that’s intentional this week.';
+
+  // Suit icons
+  const suitIcon = {
+    spades: '♠', clubs: '♣', hearts: '♥', diamonds: '♦'
+  };
+
+  box.innerHTML = `
+    <div class="summary-top">
+      <div class="summary-title">Weekly Summary</div>
+      <div class="summary-stats">
+        <span class="stat"><span class="k">Time:</span> ${totalMins}m (${totalHours}h)</span>
+        <span class="stat"><span class="k">Capacity:</span> ${capHrs}h</span>
+        <span class="stat">
+          <span class="k">Usage:</span> 
+          <span class="badge-usage ${usageClass}">${usagePct}%</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="summary-suits">
+      <span class="suit-pill">${suitIcon.spades} <span class="count">${counts.spades}</span></span>
+      <span class="suit-pill">${suitIcon.clubs} <span class="count">${counts.clubs}</span></span>
+      <span class="suit-pill">${suitIcon.hearts} <span class="count">${counts.hearts}</span></span>
+      <span class="suit-pill">${suitIcon.diamonds} <span class="count">${counts.diamonds}</span></span>
+    </div>
+
+    <div class="summary-hint">${hint}</div>
+  `;
+}
+
   function renderPlan(){
     const root = $('#planGrid');
     if(!root) return;
@@ -468,8 +621,8 @@
     const usage     = Math.round((totalMins/capMins)*100);
     $('#capacityBanner') && ($('#capacityBanner').innerText =
       `Capacity used: ${Math.round(totalMins/60)}h (${usage}%) of ${state.settings.weeklyCapacityHours}h`
-    );
-
+      );
+ renderPlanSummary();
     // Render columns and tasks
     const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
     perDay.forEach((d, i) => {
@@ -824,6 +977,89 @@
     state.plan = { weekStart: null, tasks: [] };
     save();
   }
+
+// ===== Onboarding Tour (Option A) =====
+(function initTour(){
+  const overlay = $('#tourOverlay');
+  if (!overlay) return;
+
+  const closeBtn     = $('#tourCloseBtn');
+  const openBtn      = $('#openTourBtn');
+  const dontShow     = $('#tourDontShow');
+  const dots         = Array.from(overlay.querySelectorAll('[data-dot]'));
+  const steps        = Array.from(overlay.querySelectorAll('.tour-step'));
+  const prevBtns     = Array.from(overlay.querySelectorAll('[data-tour-prev]'));
+  const next1        = $('#tourNext1');
+  const next2        = $('#tourNext2');
+  const next3        = $('#tourNext3');
+  const finish       = $('#tourFinishBtn');
+
+  let current = 1;
+  let lastFocused = null;
+
+  function show(step){
+    current = step;
+    steps.forEach(s => s.hidden = (parseInt(s.dataset.step,10) !== current));
+    dots.forEach(d => d.classList.toggle('active', parseInt(d.dataset.dot,10) === current));
+  }
+  function openTour(auto=false){
+    // If auto, check local flag
+    const seen = localStorage.getItem('solventTourSeen') === '1';
+    if (auto && seen) return;
+
+    overlay.setAttribute('aria-hidden', 'false');
+    lastFocused = document.activeElement;
+    // Focus first actionable button in the step
+    setTimeout(()=> {
+      const firstBtn = overlay.querySelector('.tour-step:not([hidden]) .tour-actions button, .tour-close');
+      if (firstBtn) firstBtn.focus();
+    }, 0);
+    trapFocus(true);
+    show(1);
+  }
+  function closeTour(){
+    overlay.setAttribute('aria-hidden', 'true');
+    trapFocus(false);
+    if (dontShow && dontShow.checked) localStorage.setItem('solventTourSeen','1');
+    if (lastFocused && document.body.contains(lastFocused)) lastFocused.focus();
+  }
+  function trapFocus(enable){
+    if (!enable) {
+      document.removeEventListener('keydown', handleKeys);
+      return;
+    }
+    document.addEventListener('keydown', handleKeys);
+  }
+  function handleKeys(e){
+    if (e.key === 'Escape') { e.preventDefault(); closeTour(); return; }
+    if (e.key !== 'Tab') return;
+
+    const focusables = overlay.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    const f = Array.from(focusables).filter(el => !el.hasAttribute('hidden') && el.offsetParent !== null);
+    if (!f.length) return;
+
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+
+  // Wire buttons
+  closeBtn?.addEventListener('click', closeTour);
+  openBtn?.addEventListener('click', ()=> openTour(false));
+  prevBtns.forEach(b => b.addEventListener('click', ()=> show(Math.max(1, current - 1))));
+  next1?.addEventListener('click', ()=> show(2));
+  next2?.addEventListener('click', ()=> show(3));
+  next3?.addEventListener('click', ()=> show(4));
+  finish?.addEventListener('click', closeTour);
+
+  // Click outside modal closes (optional, accessible-friendly)
+  overlay.addEventListener('click', (e)=>{
+    if (e.target === overlay) closeTour();
+  });
+
+  // Open automatically on first visit (after initial paint)
+  window.requestAnimationFrame(()=> openTour(true));
+})();
 
   // ---------- First render ----------
   showSection('welcome');
