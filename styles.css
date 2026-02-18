@@ -135,3 +135,7 @@ button:hover { border-color: var(--primary); }
 /* Danger button (Reset) */
 button.danger { background: #351414; border-color: #5c1f1f; color: #ffd0d0; }
 button.danger:hover { border-color: #ff5a5a; color: #ffffff; }
+
+/* Drag-to-Copy polish */
+body.copy-mode .task { cursor: copy; }
+.task.copying { box-shadow: 0 0 0 2px #ffd16666; }
