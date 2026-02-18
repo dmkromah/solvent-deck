@@ -20,14 +20,14 @@
   <meta name="twitter:image" content="favicon.svg" />
 
   <!-- Favicon (optional) -->
-  favicon.svg
+  <link rel="icon" href="favicon.svg" type="image/svg+xml"/>
 
   <!-- Styles -->
-  styles.css
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <!-- Skip link -->
-  #mainSkip to main content</a>
+  <a class="skip-link" href="#main">Skip to main content</a>
 
   <header class="app-header" role="banner">
     <div class="brand" aria-label="Solvent Deck brand">
@@ -35,7 +35,7 @@
       <div class="title">Solvent Deck</div>
     </div>
     <nav class="top-nav" id="topNav" role="navigation" aria-label="Primary">
-      <button data-section="welcome">Welcome</button>
+      <button data-section="welcome" aria-current="page">Welcome</button>
       <button data-section="how">How It Works</button>
       <button data-section="domains">Domains</button>
       <button data-section="aces">Aces</button>
@@ -53,6 +53,110 @@
 
   <main id="main" role="main" tabindex="-1">
     <!-- Welcome -->
+    <div class="card alt" style="margin-top: 16px;">
+  <span class="eyebrow">Start here</span>
+  <h2>Build a week that actually fits your life</h2>
+  <p class="lede">
+    Draw 3–5 balanced focus cards, generate a right‑sized plan, and make gentle daily progress.
+    Solvent Deck keeps your attention across ♠ Career, ♣ Health, ♥ Relationships, and ♦ Finances.
+  </p>
+
+  <div class="callout info">
+    <div class="title">Good to know</div>
+    <p class="body">Your data stays on your device (LocalStorage). You can export/import your deck anytime from the Deck section.</p>
+  </div>
+
+  <p class="fine-print">Tip: Use the <strong>Quick Tour</strong> on the Welcome screen if you’re new.</p>
+</div>
+    <!-- Onboarding Tour (Option A) -->
+<div id="tourOverlay" class="tour-overlay" aria-hidden="true">
+  <div class="tour-modal" role="dialog" aria-modal="true" aria-labelledby="tourTitle" aria-describedby="tourBody">
+    <button class="tour-close" id="tourCloseBtn" aria-label="Close tour">✕</button>
+
+    <div class="tour-steps">
+      <!-- Step 1 -->
+      <section class="tour-step" data-step="1">
+        <h2 id="tourTitle">Welcome to Solvent Deck</h2>
+        <p id="tourBody" class="muted">
+          Design a balanced life — one card at a time. Solvent Deck helps you focus each week across
+          <strong>Career ♠</strong>, <strong>Health &amp; Fitness ♣</strong>, <strong>Relationships ♥</strong>, and <strong>Finances ♦</strong>.
+        </p>
+        <ul class="tour-bullets">
+          <li>Use the suits to keep life domains in view.</li>
+          <li>Cards represent Aces (identity), K/Q (strategy), and J–2 (habits).</li>
+          <li>No sign‑in. Your data is stored locally in your browser.</li>
+        </ul>
+        <div class="tour-actions">
+          <button class="primary" id="tourNext1">Next →</button>
+        </div>
+      </section>
+
+      <!-- Step 2 -->
+      <section class="tour-step" data-step="2" hidden>
+        <h2>Step 1 — Build or Load your Deck</h2>
+        <p class="muted">
+          Start fast with the <strong>Load Example Deck</strong> button (on Welcome), or build your own:
+        </p>
+        <ul class="tour-bullets">
+          <li><strong>Aces:</strong> Bold identity goals per suit.</li>
+          <li><strong>Kings/Queens:</strong> Strategic projects with end dates.</li>
+          <li><strong>J–2 habits:</strong> Simple daily/weekly actions.</li>
+        </ul>
+        <div class="tour-actions">
+          <button class="secondary" data-tour-prev>← Back</button>
+          <button class="primary" id="tourNext2">Next →</button>
+        </div>
+      </section>
+
+      <!-- Step 3 -->
+      <section class="tour-step" data-step="3" hidden>
+        <h2>Step 2 — Weekly Draw → Generate Plan</h2>
+        <p class="muted">
+          Draw 3–5 focus cards for a balanced week, then generate a simple plan.
+        </p>
+        <ul class="tour-bullets">
+          <li>Keep “Ensure at least 1 per domain” on for balance.</li>
+          <li>Click <strong>🎴 Draw my cards</strong>, then <strong>Generate Weekly Plan</strong>.</li>
+          <li>Check the <strong>Capacity used</strong> banner to stay realistic.</li>
+        </ul>
+        <div class="tour-actions">
+          <button class="secondary" data-tour-prev>← Back</button>
+          <button class="primary" id="tourNext3">Next →</button>
+        </div>
+      </section>
+
+      <!-- Step 4 -->
+      <section class="tour-step" data-step="4" hidden>
+        <h2>Step 3 — Make it your week</h2>
+        <p class="muted">
+          Adjust your plan quickly, then track progress:
+        </p>
+        <ul class="tour-bullets">
+          <li><strong>Drag</strong> tasks to different days.</li>
+          <li><strong>Hold Alt</strong> while dragging to <strong>copy</strong> a task.</li>
+          <li><strong>Click</strong> a task title or minutes to edit.</li>
+          <li><strong>Mark done</strong> here or in <strong>Today</strong>.</li>
+        </ul>
+        <div class="tour-actions">
+          <label class="small muted" style="display:flex; gap:6px; align-items:center;">
+            <input type="checkbox" id="tourDontShow" />
+            Don’t show this tour next time
+          </label>
+          <button class="secondary" data-tour-prev>← Back</button>
+          <button class="primary" id="tourFinishBtn">Finish</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="tour-dots" aria-hidden="true">
+      <span data-dot="1" class="active">●</span>
+      <span data-dot="2">○</span>
+      <span data-dot="3">○</span>
+      <span data-dot="4">○</span>
+    </div>
+  </div>
+</div>
+    <button id="openTourBtn" aria-label="Open quick tour">Quick Tour</button>
     <section id="welcome" class="section visible" aria-labelledby="welcome-h1">
       <div class="hero">
         <h1 id="welcome-h1">Design a life aligned with who you're becoming — one card at a time.</h1>
@@ -69,17 +173,29 @@
 
     <!-- How it works -->
     <section id="how" class="section" aria-labelledby="how-h2">
-      <div class="card info">
-        <h2 id="how-h2">How the Deck Works</h2>
-        <ol>
-          <li><strong>Aces</strong> — multi‑year identity shifts</li>
-          <li><strong>Kings & Queens</strong> — annual/semester projects</li>
-          <li><strong>J–2</strong> — weekly/daily habits</li>
-          <li><strong>Weekly Draw</strong> — pick 3–5 to focus your week</li>
-          <li><strong>Plan & Review</strong> — make progress, reflect, iterate</li>
-        </ol>
-        <p class="muted">Suits: ♠ Career · ♣ Health & Fitness · ♥ Relationships · ♦ Finances</p>
-      </div>
+
+<div class="card">
+  <span class="eyebrow">Orientation</span>
+  <h2>How the Weekly Flow Works</h2>
+  <p class="lede">
+    Choose balanced focus, plan lightly, and follow through. Small wins compound into identity shifts.
+  </p>
+
+  <ol>
+    <li><strong>Aces</strong> — multi‑year identity shifts (per suit)</li>
+    <li><strong>Kings &amp; Queens</strong> — strategic projects with clear finish lines</li>
+    <li><strong>J–2</strong> — weekly/daily habits that keep the flywheel moving</li>
+    <li><strong>Weekly Draw</strong> — pick 3–5 cards to focus your week</li>
+    <li><strong>Plan &amp; Review</strong> — adjust capacity, reflect, iterate</li>
+  </ol>
+
+  <hr class="section-divider" />
+
+  <div class="callout tip">
+    <div class="title">Tip</div>
+    <p class="body">Keep “Ensure at least 1 per domain” on for balance while you’re learning the system.</p>
+  </div>
+</div>
     </section>
 
     <!-- Domains -->
@@ -123,12 +239,45 @@
       <h2 id="draw-h2">Weekly Draw</h2>
       <p class="small muted">Hint: Keep “min 1 per domain” on for a balanced week.</p>
       <div class="controls">
+        <div class="card alt" style="margin-bottom: 16px;">
+  <span class="kicker">Weekly Draw</span>
+  <h2>Pick your focus</h2>
+  <p class="lede">
+    Draw 3–5 cards. Keep it achievable. You can always refine after you see the plan.
+  </p>
+
+  <div class="label-row">
+    Emphasis this week:
+    <span class="pills">
+      <span class="pill">♠ Career</span>
+      <span class="pill">♣ Health</span>
+      <span class="pill">♥ Relationships</span>
+      <span class="pill">♦ Finances</span>
+    </span>
+  </div>
+
+  <div class="callout info">
+    <div class="title">Heads‑up</div>
+    <p class="body">You can re‑draw if it looks too heavy or too light. The goal is a solvent week, not a perfect one.</p>
+  </div>
+</div>
         <label><input type="checkbox" id="minPerDomain" checked> Ensure at least 1 per domain</label>
         <label>Number of cards:
           <select id="drawCount"><option>3</option><option selected>4</option><option>5</option></select>
         </label>
         <button class="primary" id="drawBtn">🎴 Draw my cards</button>
       </div>
+      <!-- Empty-deck message (shown only when no cards are available to draw) -->
+<div id="drawEmptyMsg" class="callout info" style="display:none; margin-bottom: 16px;">
+  <div class="title">No cards to draw from yet</div>
+  <p class="body" style="margin-bottom: 10px;">
+    You haven’t built your deck yet. Add some Aces / Strategics / Habits, or load the Example Deck to get started.
+  </p>
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <button id="emptyLoadExample" class="primary">Load Example Deck</button>
+    <button id="emptyGotoAces" class="secondary">Go to Aces</button>
+  </div>
+</div>
       <div id="drawResult" class="grid grid-4" aria-live="polite"></div>
       <div class="actions">
         <button class="primary" id="genPlanBtn">Generate Weekly Plan</button>
@@ -141,6 +290,22 @@
       <p class="small muted">
         Hint: Mark tasks done here or in <strong>Today</strong>. <strong>Hold Alt while dragging</strong> to copy a task.
       </p>
+      <div class="card" style="margin-bottom: 16px;">
+  <span class="kicker">Weekly Plan</span>
+  <h2>Shape your week</h2>
+  <p class="lede">
+    Drag tasks between days, <strong>Alt‑drag</strong> to copy, and adjust durations. Focus on the smallest steps that matter.
+  </p>
+
+  <div class="callout warn" style="margin-top: 12px;">
+    <div class="title">Capacity matters</div>
+    <p class="body">If your capacity bar turns red, reduce cards or durations. Staying solvent means staying honest with limits.</p>
+  </div>
+</div>
+
+<!-- Weekly Summary Card (Option D) -->
+<div id="planSummary" class="summary-card" aria-live="polite"></div>
+
       <p class="muted" id="capacityBanner">Capacity: —</p>
       <div id="planGrid" class="plan-grid" aria-live="polite"></div>
       <div class="actions"><button class="primary" data-goto="today">Approve Plan & Go to Today</button></div>
@@ -165,11 +330,33 @@
     <!-- Review -->
     <section id="review" class="section" aria-labelledby="review-h2">
       <h2 id="review-h2">Weekly Review</h2>
+      <div class="card alt" style="margin-bottom: 16px;">
+  <span class="eyebrow">Weekly Review</span>
+  <h2>Look back with kindness</h2>
+  <p class="lede">
+    Celebrate what moved, learn from what didn’t, and refine the next draw. Progress is a practice.
+  </p>
+
+  <div class="callout success">
+    <div class="title">Nice work</div>
+    <p class="body">Even 1–2 meaningful completions are better than a long list you ignore. Solvency favours realism.</p>
+  </div>
+</div>
+
+<hr class="section-divider" />
       <div id="reviewView" aria-live="polite"></div>
       <div class="actions"><button id="newWeekBtn" data-goto="draw">Draw Next Week</button></div>
     </section>
 
     <!-- Insights -->
+
+<div class="card" style="margin-bottom: 16px;">
+  <span class="eyebrow">Insights</span>
+  <h2>Where effort pays off</h2>
+  <p class="lede">
+    Notice which cards convert to completions most often. Keep what works; simplify the rest.
+  </p>
+</div>
     <section id="insights" class="section" aria-labelledby="insights-h2">
       <h2 id="insights-h2">Insights</h2>
       <div id="insightsView" aria-live="polite"></div>
@@ -178,6 +365,10 @@
     <!-- Settings -->
     <section id="settings" class="section" aria-labelledby="settings-h2">
       <h2 id="settings-h2">Settings</h2>
+      <div class="callout info" style="margin-bottom: 16px;">
+  <div class="title">About your data</div>
+  <p class="body">This prototype stores your deck and plan locally in your browser. Use Export/Import in the Deck section to move between devices.</p>
+</div>
       <div class="controls">
         <label>Weekly capacity (hours): <input type="number" id="capHours" value="8" min="1" max="40"></label>
         <button id="saveSettingsBtn">Save</button>
@@ -191,6 +382,6 @@
   </footer>
 
   <!-- Script -->
-  app.js</script>
+  <script src="app.js"></script>
 </body>
 </html>
