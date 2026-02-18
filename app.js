@@ -705,6 +705,87 @@
     state.plan = { weekStart: null, tasks: [] };
     save();
   }
+// ===== Onboarding Tour (Option A) =====
+(function initTour(){
+  const overlay = $('#tourOverlay');
+  if (!overlay) return;
+
+  const closeBtn     = $('#tourCloseBtn');
+  const openBtn      = $('#openTourBtn');
+  const dontShow     = $('#tourDontShow');
+  const dots         = Array.from(overlay.querySelectorAll('[data-dot]'));
+  const steps        = Array.from(overlay.querySelectorAll('.tour-step'));
+  const prevBtns     = Array.from(overlay.querySelectorAll('[data-tour-prev]'));
+  const next1        = $('#tourNext1');
+  const next2        = $('#tourNext2');
+  const next3        = $('#tourNext3');
+  const finish       = $('#tourFinishBtn');
+
+  let current = 1;
+  let lastFocused = null;
+
+  function show(step){
+    current = step;
+    steps.forEach(s => s.hidden = (parseInt(s.dataset.step,10) !== current));
+    dots.forEach(d => d.classList.toggle('active', parseInt(d.dataset.dot,10) === current));
+  }
+  function openTour(auto=false){
+    // If auto, check local flag
+    const seen = localStorage.getItem('solventTourSeen') === '1';
+    if (auto && seen) return;
+
+    overlay.setAttribute('aria-hidden', 'false');
+    lastFocused = document.activeElement;
+    // Focus first actionable button in the step
+    setTimeout(()=> {
+      const firstBtn = overlay.querySelector('.tour-step:not([hidden]) .tour-actions button, .tour-close');
+      if (firstBtn) firstBtn.focus();
+    }, 0);
+    trapFocus(true);
+    show(1);
+  }
+  function closeTour(){
+    overlay.setAttribute('aria-hidden', 'true');
+    trapFocus(false);
+    if (dontShow && dontShow.checked) localStorage.setItem('solventTourSeen','1');
+    if (lastFocused && document.body.contains(lastFocused)) lastFocused.focus();
+  }
+  function trapFocus(enable){
+    if (!enable) {
+      document.removeEventListener('keydown', handleKeys);
+      return;
+    }
+    document.addEventListener('keydown', handleKeys);
+  }
+  function handleKeys(e){
+    if (e.key === 'Escape') { e.preventDefault(); closeTour(); return; }
+    if (e.key !== 'Tab') return;
+
+    const focusables = overlay.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    const f = Array.from(focusables).filter(el => !el.hasAttribute('hidden') && el.offsetParent !== null);
+    if (!f.length) return;
+
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+  // Wire buttons
+  closeBtn?.addEventListener('click', closeTour);
+  openBtn?.addEventListener('click', ()=> openTour(false));
+  prevBtns.forEach(b => b.addEventListener('click', ()=> show(Math.max(1, current - 1))));
+  next1?.addEventListener('click', ()=> show(2));
+  next2?.addEventListener('click', ()=> show(3));
+  next3?.addEventListener('click', ()=> show(4));
+  finish?.addEventListener('click', closeTour);
+
+  // Click outside modal closes (optional, accessible-friendly)
+  overlay.addEventListener('click', (e)=>{
+    if (e.target === overlay) closeTour();
+  });
+
+  // Open automatically on first visit (after initial paint)
+  window.requestAnimationFrame(()=> openTour(true));
+})();
 
   // ========= First render =========
   showSection('welcome');
