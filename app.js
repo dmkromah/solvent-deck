@@ -1,5 +1,177 @@
 
 (function(){
+  
+function renderAceEditor(){
+  const root = document.getElementById('aceEditor');
+  if (!root) return;
+
+  root.innerHTML = '';
+  const suits = ['spades','clubs','hearts','diamonds'];
+
+  suits.forEach(s => {
+    const wrap = document.createElement('div');
+    wrap.className = 'card';
+    const ace = state.aces[s] || { title:'', metrics:[] };
+
+    wrap.innerHTML = `
+      <div class="suit-badge ${suitMeta[s].color}">${suitMeta[s].icon} ${suitMeta[s].name} — Ace</div>
+      <div class="card-editor">
+        <label class="label">Ace Title</label>
+        <input type="text" id="ace-${s}" value="${ace.title||''}" placeholder="Identity-level goal for ${suitMeta[s].name}">
+        <label class="label">Metrics (comma-separated)</label>
+        <input type="text" id="ace-${s}-metrics" value="${(ace.metrics||[]).join(', ')}" placeholder="e.g., 2 papers, 1 book">
+        <div class="small">Tip: Bold but measurable. Example: “Be a published scholar” (♠).</div>
+      </div>
+    `;
+    root.appendChild(wrap);
+  });
+
+  // Bind inputs to state
+  ['spades','clubs','hearts','diamonds'].forEach(s => {
+    const titleEl = document.getElementById(`ace-${s}`);
+    const metricsEl = document.getElementById(`ace-${s}-metrics`);
+
+    titleEl?.addEventListener('input', (e)=>{
+      state.aces[s] = state.aces[s] || { title:'', metrics:[] };
+      state.aces[s].title = e.target.value;
+      save();
+    });
+
+    metricsEl?.addEventListener('input', (e)=>{
+      state.aces[s] = state.aces[s] || { title:'', metrics:[] };
+      state.aces[s].metrics = e.target.value.split(',').map(x=>x.trim()).filter(Boolean);
+      save();
+    });
+  });
+}
+
+function renderStrategicEditor(){
+  const root = document.getElementById('strategicEditor');
+  if (!root) return;
+
+  root.innerHTML = '';
+  const suits = ['spades','clubs','hearts','diamonds'];
+
+  suits.forEach(s => {
+    const wrap = document.createElement('div');
+    wrap.className = 'card';
+    const rows = state.strategics[s] || [{},{ }]; // King, Queen
+
+    wrap.innerHTML = `
+      <div class="suit-badge ${suitMeta[s].color}">${suitMeta[s].icon} ${suitMeta[s].name} — K/Q</div>
+      ${rows.map((st, i)=> `
+        <div class="card-chip">
+          <div class="meta"><strong>${i===0?'King':'Queen'}</strong></div>
+          <label class="label">Title</label>
+          <input type="text" id="st-${s}-${i}-title" value="${st.title||''}" placeholder="Project that advances the Ace">
+          <div class="grid grid-2">
+            <div>
+              <label class="label">Finish date</label>
+              <input type="date" id="st-${s}-${i}-due" value="${st.due||''}">
+            </div>
+            <div>
+              <label class="label">Planned weekly minutes</label>
+              <input type="number" id="st-${s}-${i}-mins" value="${st.mins||60}" min="15" max="240">
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    `;
+    root.appendChild(wrap);
+
+    // Bind each row
+    rows.forEach((_, i)=>{
+      document.getElementById(`st-${s}-${i}-title`)?.addEventListener('input', (e)=>{
+        state.strategics[s] = state.strategics[s] || [{},{}];
+        state.strategics[s][i].title = e.target.value;
+        save();
+      });
+      document.getElementById(`st-${s}-${i}-due`)?.addEventListener('change', (e)=>{
+        state.strategics[s] = state.strategics[s] || [{},{}];
+        state.strategics[s][i].due = e.target.value;
+        save();
+      });
+      document.getElementById(`st-${s}-${i}-mins`)?.addEventListener('change', (e)=>{
+        state.strategics[s] = state.strategics[s] || [{},{}];
+        state.strategics[s][i].mins = parseInt(e.target.value||60,10);
+        save();
+      });
+    });
+  });
+}
+
+function renderHabitEditor(){
+  const root = document.getElementById('habitEditor');
+  if (!root) return;
+
+  root.innerHTML = '';
+  const suits = ['spades','clubs','hearts','diamonds'];
+
+  // default templates (you can adjust)
+  const habitTemplates = {
+    spades:   [
+      { title:'Write 300 words', cadence:'daily',  duration:25 },
+      { title:'Two research sprints', cadence:'2x', duration:45 },
+      { title:'Read one seminal paper', cadence:'weekly', duration:30 }
+    ],
+    clubs:    [
+      { title:'10k steps', cadence:'daily', duration:40 },
+      { title:'Protein at each meal', cadence:'daily', duration:10 },
+      { title:'Lights out 10pm', cadence:'daily', duration:5 }
+    ],
+    hearts:   [
+      { title:'Share three appreciations', cadence:'daily', duration:10 },
+      { title:'Weekly partner meeting',    cadence:'weekly', duration:45 },
+      { title:'Call a mentor',             cadence:'weekly', duration:20 }
+    ],
+    diamonds: [
+      { title:'Track daily expenses', cadence:'daily',  duration:8  },
+      { title:'DCA invest',           cadence:'weekly', duration:15 },
+      { title:'Review budget',        cadence:'weekly', duration:20 }
+    ]
+  };
+
+  suits.forEach(s => {
+    const wrap = document.createElement('div');
+    wrap.className = 'card';
+    const selected = state.habits[s] || [];
+    const templates = habitTemplates[s];
+
+    wrap.innerHTML = `
+      <div class="suit-badge ${suitMeta[s].color}">${suitMeta[s].icon} ${suitMeta[s].name} — Habits (J–2)</div>
+      <div class="label">Pick up to 3 starter habits</div>
+      <div class="grid grid-2">
+        ${templates.map((t, idx)=>{
+          const id = `hab-${s}-${idx}`;
+          const isChecked = selected.some(h=>h.title===t.title);
+          const cadenceLbl = t.cadence==='daily'?'Daily':(t.cadence==='2x'?'Tue/Fri':'Weekly');
+          return `<label class="card-chip">
+            <input type="checkbox" id="${id}" ${isChecked?'checked':''}>
+            <span class="title">${t.title}</span>
+            <span class="meta">${cadenceLbl} · ${t.duration}m</span>
+          </label>`;
+        }).join('')}
+      </div>
+    `;
+    root.appendChild(wrap);
+
+    templates.forEach((t, idx)=>{
+      document.getElementById(`hab-${s}-${idx}`)?.addEventListener('change', (e)=>{
+        const checked = e.target.checked;
+        let list = state.habits[s] || [];
+        if (checked){
+          if (list.length >= 3){ alert('Select up to 3 to keep it light.'); e.target.checked=false; return; }
+          list.push(t);
+        } else {
+          list = list.filter(h=>h.title!==t.title);
+        }
+        state.habits[s] = list;
+        save();
+      });
+    });
+  });
+}
+
   // ========= Tiny DOM helpers =========
   const $  = (sel, root=document) => root.querySelector(sel);
   const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
@@ -67,20 +239,21 @@
 
   // ========= Navigation with guards (prevents freezes) =========
   function showSection(id){
-    $$('.section').forEach(s => s.classList.remove('visible'));
-    const el = document.getElementById(id);
-    if (el) el.classList.add('visible');
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('visible');
 
-    if (id==='draw'     && typeof renderDraw      === 'function') renderDraw();
-    if (id==='plan'     && typeof renderPlan      === 'function') renderPlan();
-    if (id==='today'    && typeof renderToday     === 'function') renderToday();
-    if (id==='deck'     && typeof renderDeck      === 'function') renderDeck();
-    if (id==='review'   && typeof renderReview    === 'function') renderReview();
-    if (id==='insights' && typeof renderInsights  === 'function') renderInsights();
-    if (id==='aces'     && typeof renderAceEditor === 'function') renderAceEditor?.();
-    if (id==='strategics'&& typeof renderStrategicEditor==='function') renderStrategicEditor?.();
-    if (id==='habits'   && typeof renderHabitEditor==='function') renderHabitEditor?.();
-  }
+  if (id==='aces'       && typeof renderAceEditor        === 'function') renderAceEditor();
+  if (id==='strategics' && typeof renderStrategicEditor  === 'function') renderStrategicEditor();
+  if (id==='habits'     && typeof renderHabitEditor      === 'function') renderHabitEditor();
+
+  if (id==='draw'       && typeof renderDraw             === 'function') renderDraw();
+  if (id==='plan'       && typeof renderPlan             === 'function') renderPlan();
+  if (id==='today'      && typeof renderToday            === 'function') renderToday();
+  if (id==='deck'       && typeof renderDeck             === 'function') renderDeck();
+  if (id==='review'     && typeof renderReview           === 'function') renderReview();
+  if (id==='insights'   && typeof renderInsights         === 'function') renderInsights();
+}
 
   // top nav binding
   const topNav = $('#topNav');
