@@ -1,6 +1,30 @@
 
 (function(){
   
+// Global handler for any [data-goto] button/link (works anywhere on the page)
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-goto]');
+  if (!el) return;
+
+  e.preventDefault(); // prevents <form> submit / <a> default if present
+
+  try {
+    // Save any in-progress edits (your editors already save on input,
+    // but this makes the button live up to "Save & Continue")
+    if (typeof save === 'function') save();
+
+    const target = el.getAttribute('data-goto');
+    if (typeof showSection === 'function' && target) {
+      showSection(target);
+    } else {
+      console.warn('[goto] No showSection or missing target:', target);
+    }
+  } catch (err) {
+    console.error('[goto] navigation error:', err);
+    alert('Could not continue. Please refresh and try again.');
+  }
+});
+
 function renderAceEditor(){
   const root = document.getElementById('aceEditor');
   if (!root) return;
